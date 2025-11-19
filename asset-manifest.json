@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/Abyss-Raids-Helper/static/css/main.012ccc33.css",
-    "main.js": "/Abyss-Raids-Helper/static/js/main.daabcdfe.js",
-    "static/js/991.b7fb29c7.chunk.js": "/Abyss-Raids-Helper/static/js/991.b7fb29c7.chunk.js",
+    "main.css": "/Abyss-Raids-Helper/static/css/main.21b8f50c.css",
+    "main.js": "/Abyss-Raids-Helper/static/js/main.91326b50.js",
+    "static/js/991.0fc13800.chunk.js": "/Abyss-Raids-Helper/static/js/991.0fc13800.chunk.js",
     "index.html": "/Abyss-Raids-Helper/index.html",
-    "main.012ccc33.css.map": "/Abyss-Raids-Helper/static/css/main.012ccc33.css.map",
-    "main.daabcdfe.js.map": "/Abyss-Raids-Helper/static/js/main.daabcdfe.js.map",
-    "991.b7fb29c7.chunk.js.map": "/Abyss-Raids-Helper/static/js/991.b7fb29c7.chunk.js.map"
+    "main.21b8f50c.css.map": "/Abyss-Raids-Helper/static/css/main.21b8f50c.css.map",
+    "main.91326b50.js.map": "/Abyss-Raids-Helper/static/js/main.91326b50.js.map",
+    "991.0fc13800.chunk.js.map": "/Abyss-Raids-Helper/static/js/991.0fc13800.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.012ccc33.css",
-    "static/js/main.daabcdfe.js"
+    "static/css/main.21b8f50c.css",
+    "static/js/main.91326b50.js"
   ]
 }
