@@ -53,13 +53,15 @@ const createInitialBlockedCells = () => {
 const gradeEntries = Object.entries(GRADE_INFO);
 const shapeEntries = SHAPE_OPTIONS;
 
-const ShapePreview = ({ shape, color = "#475569" }) => {
+const ShapePreview = ({ shape, color = "#475569", size = 72 }) => {
   if (!shape) return null;
   const maxDimension = Math.max(shape.width, shape.height);
   const trackSize = `${100 / maxDimension}%`;
   const previewStyle = {
     gridTemplateColumns: `repeat(${shape.width}, ${trackSize})`,
     gridTemplateRows: `repeat(${shape.height}, ${trackSize})`,
+    width: size,
+    height: size,
   };
   return (
     <div className="shape-preview" style={previewStyle}>
@@ -445,6 +447,44 @@ const SugarOptimizer = () => {
 
           <p className="piece-hint">{ROLE_LABELS[playerRole]} 전용 조각만 표시되고 추가됩니다.</p>
 
+          {playerPieces.length > 0 && (
+            <div className="piece-tray">
+              <div className="piece-tray-header">
+                <div>
+                  전체 조각 미리보기 <span className="piece-tray-count">({playerPieces.length}개)</span>
+                </div>
+                <span>드래그하여 더 보기</span>
+              </div>
+              <div className="piece-tray-scroll">
+                {playerPieces.map((piece) => {
+                  const info = GRADE_INFO[piece.grade];
+                  const shape = shapeLookup.get(piece.shapeKey);
+                  return (
+                    <div key={piece.id} className="piece-chip">
+                      <ShapePreview shape={shape} color={info?.color || "#475569"} size={56} />
+                      <div className="piece-chip-meta">
+                        <span className="piece-chip-grade" style={{ color: info?.color || "#475569" }}>
+                          {info?.label}
+                        </span>
+                        <span className="piece-chip-detail">
+                          {piece.modifier} · {shape?.area ?? "?"}칸 · x{piece.quantity || 1}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => handleRemovePiece(piece.id)}
+                        aria-label={`${piece.modifier} 조각 삭제`}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {groupedPieces.length === 0 && <p className="empty-text">추가된 조각이 없습니다.</p>}
           {groupedPieces.map((group) => (
             <div key={group.modifier} className="modifier-group">
@@ -457,20 +497,15 @@ const SugarOptimizer = () => {
                   const info = GRADE_INFO[piece.grade];
                   const shape = shapeLookup.get(piece.shapeKey);
                   return (
-                    <div key={piece.id} className="piece-card">
-                      <div
-                        className="piece-card-header"
-                        style={{ backgroundColor: info?.color || "#475569" }}
-                      >
-                        <span>{info?.label}</span>
-                        <span>{shape?.area ?? "?"}칸</span>
-                      </div>
+                    <div key={piece.id} className="piece-card compact">
+                      <ShapePreview shape={shape} color={info?.color || "#475569"} size={60} />
                       <div className="piece-card-body">
-                        <ShapePreview shape={shape} color={info?.color || "#475569"} />
-                        <div className="piece-card-meta">
-                          <div className="piece-card-details">
-                            <span>보유 x{piece.quantity || 1}</span>
-                          </div>
+                        <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
+                          {info?.label}
+                        </div>
+                        <div className="piece-card-details">
+                          <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
+                          <span className="piece-card-modifier">{piece.modifier}</span>
                         </div>
                       </div>
                       <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
@@ -490,6 +525,13 @@ const SugarOptimizer = () => {
           {isSolving ? "계산 중..." : "최적 배치 계산"}
         </button>
       </div>
+
+      {isSolving && (
+        <div className="solve-progress" role="status" aria-live="polite">
+          <span className="solve-spinner" aria-hidden />
+          <span>최적 배치를 찾는 중입니다...</span>
+        </div>
+      )}
 
       {solution && (
         <section className="sugar-card solution-card">
