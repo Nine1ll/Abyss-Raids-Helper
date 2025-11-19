@@ -551,3 +551,617 @@ footer.dark {
   background-color: #1e293b;
   color: #cbd5e1;
 }
+
+/* =========================
+   상단 뷰 토글
+========================= */
+.view-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.view-tabs button {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 2px solid #e56c2d;
+  background: transparent;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-tabs button.active {
+  background: #e56c2d;
+  color: white;
+}
+
+/* =========================
+   설탕 유리 배치 도우미
+========================= */
+.sugar-view {
+  margin-top: 12px;
+}
+
+.sugar-view h1 {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.sugar-subtitle {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #475569;
+}
+
+.App.dark .sugar-subtitle {
+  color: #cbd5f5;
+}
+
+.sugar-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.sugar-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.App.dark .sugar-card {
+  background: #1f2937;
+  color: #f8fafc;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.sugar-section-title {
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #e56c2d;
+}
+
+.board-settings {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.board-size-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.board-settings label {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  gap: 4px;
+}
+
+.board-settings input,
+.board-settings select,
+.piece-form input,
+.piece-form select {
+  padding: 6px 8px;
+  border: 1px solid #cbd5f5;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.App.dark .board-settings input,
+.App.dark .board-settings select,
+.App.dark .piece-form input,
+.App.dark .piece-form select {
+  background: #0f172a;
+  color: white;
+  border-color: #475569;
+}
+
+.sugar-grid {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.sugar-grid-frame {
+  width: min(420px, 100%);
+  margin: 0 auto 16px;
+}
+
+.sugar-cell {
+  border: 1px dashed #cbd5f5;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.sugar-cell.blocked {
+  background: #94a3b8;
+  border-color: #64748b;
+  color: white;
+  font-size: 18px;
+}
+
+.sugar-cell.filled {
+  color: white;
+  border-color: transparent;
+}
+
+.sugar-cell:hover {
+  transform: scale(1.03);
+}
+
+.board-hint {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.App.dark .board-hint {
+  color: #cbd5f5;
+}
+
+.image-uploaders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.upload-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.preview-image {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 6px;
+  object-fit: cover;
+}
+
+.piece-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.piece-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.piece-form-row.compact {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.piece-form-row label {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  gap: 4px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.App.dark .piece-form-row label {
+  color: #e2e8f0;
+}
+
+.shape-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shape-group-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #475569;
+}
+
+.App.dark .shape-group-title {
+  color: #e2e8f0;
+}
+
+.shape-group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.shape-option.add {
+  border: 1px solid #cbd5f5;
+  border-radius: 12px;
+  padding: 10px 8px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.shape-option.add:hover {
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  transform: translateY(-2px);
+}
+
+.shape-area-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.App.dark .shape-option.add {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.App.dark .shape-area-label {
+  color: #f8fafc;
+}
+
+.shape-preview {
+  display: grid;
+  gap: 2px;
+  justify-content: center;
+  align-content: center;
+}
+
+.shape-preview-cell {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 4px;
+  border: 1px dashed #cbd5f5;
+}
+
+.shape-preview-cell.filled {
+  border: none;
+}
+
+.App.dark .shape-preview-cell {
+  border-color: #475569;
+}
+
+.piece-form button.primary.small {
+  align-self: flex-start;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.piece-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.App.dark .piece-hint {
+  color: #cbd5f5;
+}
+
+.modifier-group {
+  margin-bottom: 20px;
+}
+
+.modifier-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.App.dark .modifier-group-header {
+  color: #e2e8f0;
+}
+
+.piece-gallery {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.piece-gallery::-webkit-scrollbar,
+.piece-tray-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.piece-gallery::-webkit-scrollbar-thumb,
+.piece-tray-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 999px;
+}
+
+.piece-card {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #f8fafc;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.piece-card.compact {
+  min-width: 200px;
+}
+
+.App.dark .piece-card {
+  background: #0f172a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.piece-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.piece-card-grade {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.piece-card-details {
+  font-size: 13px;
+  color: #475569;
+}
+
+.piece-card-modifier {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.App.dark .piece-card-details {
+  color: #cbd5f5;
+}
+
+.App.dark .piece-card-modifier {
+  color: #94a3b8;
+}
+
+.piece-card button.ghost,
+.piece-chip button.ghost {
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.piece-card button.ghost {
+  align-self: flex-start;
+}
+
+.piece-chip button.ghost {
+  margin-left: auto;
+}
+
+.piece-tray {
+  margin-bottom: 16px;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.App.dark .piece-tray {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.piece-tray-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.piece-tray-count {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.App.dark .piece-tray-header {
+  color: #cbd5f5;
+}
+
+.piece-tray-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.piece-chip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  min-width: 220px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+.App.dark .piece-chip {
+  background: #0f172a;
+}
+
+.piece-chip-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.piece-chip-grade {
+  font-weight: 700;
+}
+
+.piece-chip-detail {
+  color: #94a3b8;
+}
+
+.App.dark .piece-chip-meta {
+  color: #cbd5f5;
+}
+
+.solve-progress {
+  margin: 0 auto 24px auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.App.dark .solve-progress {
+  background: rgba(37, 99, 235, 0.25);
+  color: #bfdbfe;
+}
+
+.solve-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(37, 99, 235, 0.3);
+  border-top-color: #2563eb;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sugar-actions {
+  display: flex;
+  justify-content: center;
+  margin: 24px 0;
+}
+
+.sugar-actions .primary {
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: none;
+  font-size: 16px;
+  background: linear-gradient(90deg, #2563eb, #9333ea);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.solution-card {
+  margin-top: 16px;
+}
+
+.solution-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.solution-label {
+  font-size: 14px;
+  color: #475569;
+}
+
+.App.dark .solution-label {
+  color: #cbd5f5;
+}
+
+.solution-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.bonus-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px 0;
+}
+
+.bonus-list li {
+  padding: 6px 0;
+}
+
+.placement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.placement-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.App.dark .placement-item {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.placement-index {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.empty-text {
+  color: #94a3b8;
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.App.dark .sugar-cell {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.App.dark .sugar-cell.blocked {
+  background: #475569;
+}
