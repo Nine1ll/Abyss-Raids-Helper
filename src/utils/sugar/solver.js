@@ -18,7 +18,7 @@ const createEmptyResult = () => ({
   bonusBreakdown: [],
 });
 
-export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role }) => {
+export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, maxDepth = 15 }) => {
   const totalCells = rows * cols;
   if (totalCells <= 0) {
     return createEmptyResult();
@@ -209,7 +209,13 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     return bestBit || (freeMask & -freeMask);
   };
 
-  const dfs = (occupiedMask, baseScore, unusedScore) => {
+  const dfs = (occupiedMask, baseScore, unusedScore, depth = 0) => {
+    // maxDepth 추가
+    if (depth > maxDepth) {
+      evaluate(baseScore);
+      return;
+    }
+
     const optimisticBonus = futureBonusBound();
     const optimisticTotal = baseScore + unusedScore + optimisticBonus;
     if (optimisticTotal <= bestResult.totalScore) {
@@ -237,7 +243,7 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
 
     const targetIndex = bitToIndex.get(targetBit);
     if (typeof targetIndex === "undefined") {
-      dfs(occupiedMask | targetBit, baseScore, unusedScore);
+      dfs(occupiedMask | targetBit, baseScore, unusedScore, depth + 1);
       return;
     }
 
@@ -270,7 +276,7 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
           cells: placement.cells,
         });
 
-        dfs(occupiedMask | placement.mask, baseScore + entry.baseScore, unusedScore - entry.baseScore);
+        dfs(occupiedMask | placement.mask, baseScore + entry.baseScore, unusedScore - entry.baseScore, depth + 1);
 
         placementsStack.pop();
         modifierTotals[entry.modifier] -= entry.area;
@@ -285,10 +291,10 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     }
 
     // Option 2: intentionally leave the cell empty.
-    dfs(occupiedMask | targetBit, baseScore, unusedScore);
+    dfs(occupiedMask | targetBit, baseScore, unusedScore, depth + 1);
   };
 
-  dfs(blockedMask, 0, unusedBaseScore);
+  dfs(blockedMask, 0, unusedBaseScore, 0);
 
   return bestResult;
 };

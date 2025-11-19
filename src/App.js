@@ -5,8 +5,22 @@ import SugarOptimizer from "./components/SugarOptimizer";
 import "./App.css";
 
 const App = () => {
-  const { darkMode } = useContext(ThemeContext);
+  const { darkMode, setDarkMode } = useContext(ThemeContext);
   const [activeView, setActiveView] = useState("siege");
+
+  // SugarOptimizer의 상태를 App에서 관리
+  const [sugarOptimizerState, setSugarOptimizerState] = useState({
+    blockedCells: null, // 초기 상태는 null, SugarOptimizer에서 초기화
+    playerRole: "dealer",
+    pieces: [],
+    boardImage: null,
+    piecesImage: null,
+    solution: null,
+    newPiece: {
+      modifier: null, // SugarOptimizer에서 초기화
+      grade: "rare",
+    },
+  });
 
   return (
     <div className={`App ${darkMode ? "dark" : ""}`}>
@@ -25,7 +39,7 @@ const App = () => {
         </button>
       </div>
 
-      {activeView === "siege" ? <SiegeSimulator /> : <SugarOptimizer />}
+      {activeView === "siege" ? <SiegeSimulator /> : <SugarOptimizer appState={sugarOptimizerState} setAppState={setSugarOptimizerState} />}
     </div>
   );
 };
