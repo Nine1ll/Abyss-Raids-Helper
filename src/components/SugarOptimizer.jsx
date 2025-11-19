@@ -357,7 +357,7 @@ const SugarOptimizer = ({ appState, setAppState }) => {
   return (
     <div className={`sugar-view ${darkMode ? "dark" : ""}`}>
       <div className="sugar-toolbar">
-        <h1>🧊 설탕 유리 배치 도우미</h1>
+        <h1>설탕 유리조각 배치 도우미</h1>
         <div className="theme-toggle" role="group" aria-label="테마 선택">
           <button
             type="button"
@@ -376,8 +376,9 @@ const SugarOptimizer = ({ appState, setAppState }) => {
         </div>
       </div>
       <p className="sugar-subtitle">
-        빈칸 사진과 조각 사진을 업로드한 뒤, 격자를 직접 표시하고 보유 중인 조각을
-        입력하면 가장 높은 균열 저항력을 계산합니다.
+        {/* 빈칸 사진과 조각 사진을 업로드한 뒤, 격자를 직접 표시하고 보유 중인 조각을 */}
+        {/* 입력하면 가장 높은 균열 저항력을 계산합니다. */}
+        아직 사진은 지원하지 않습니다. 추후 일정 크기의 사진으로 입력받아 자동 입력되게 만들겠습니다. 죄송합니다.
       </p>
 
       <div className="sugar-layout">
