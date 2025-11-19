@@ -4,32 +4,7 @@ import { SHAPE_OPTIONS } from "../utils/sugar/shapes";
 import { solveSugarBoard } from "../utils/sugar/solver";
 import { ThemeContext } from "../context/ThemeContext";
 
-const DEFAULT_PIECES = [
-  {
-    id: "sample-1",
-    role: "dealer",
-    modifier: "광휘",
-    grade: "rare",
-    shapeKey: "3_L_sw",
-    quantity: 1,
-  },
-  {
-    id: "sample-2",
-    role: "dealer",
-    modifier: "관통",
-    grade: "epic",
-    shapeKey: "4_T_up",
-    quantity: 1,
-  },
-  {
-    id: "sample-3",
-    role: "supporter",
-    modifier: "축복",
-    grade: "super_epic",
-    shapeKey: "5_plus",
-    quantity: 1,
-  },
-];
+const DEFAULT_PIECES = [];
 
 const BOARD_SIZE = 7;
 const OPEN_ROWS = [2, 3, 4];
@@ -84,7 +59,7 @@ const ShapePreview = ({ shape, color = "#475569", cellSize = 16 }) => {
 const formatScore = (value) => value.toLocaleString("ko-KR");
 
 const SugarOptimizer = () => {
-  const { darkMode, toggleDarkMode } = useContext(ThemeContext);
+  const { darkMode, setDarkMode: setDarkModeExplicit } = useContext(ThemeContext);
 
   const [blockedCells, setBlockedCells] = useState(() => createInitialBlockedCells());
   const [playerRole, setPlayerRole] = useState("dealer");
@@ -94,12 +69,20 @@ const SugarOptimizer = () => {
   const [solution, setSolution] = useState(null);
   const [isSolving, setIsSolving] = useState(false);
 
-  const pieceIdRef = useRef(DEFAULT_PIECES.length + 1);
+  const pieceIdRef = useRef(1);
 
   const [newPiece, setNewPiece] = useState(() => ({
     modifier: ROLE_MODIFIERS.dealer?.[0] || "",
     grade: "rare",
   }));
+
+  const handleThemeSelect = (mode) => {
+    if (mode === "dark") {
+      setDarkModeExplicit(true);
+    } else if (mode === "light") {
+      setDarkModeExplicit(false);
+    }
+  };
 
   useEffect(() => {
     setNewPiece((prev) => {
@@ -283,7 +266,10 @@ const SugarOptimizer = () => {
     () => pieces.filter((piece) => piece.role === playerRole),
     [pieces, playerRole]
   );
-  const playerPieceCount = playerPieces.length;
+  const playerPieceCount = useMemo(
+    () => playerPieces.reduce((sum, piece) => sum + (Number(piece.quantity) || 0), 0),
+    [playerPieces]
+  );
   const modifierOrder = useMemo(() => {
     const map = new Map();
     modifiersForRole.forEach((modifier, index) => {
@@ -347,9 +333,22 @@ const SugarOptimizer = () => {
     <div className={`sugar-view ${darkMode ? "dark" : ""}`}>
       <div className="sugar-toolbar">
         <h1>🧊 설탕 유리 배치 도우미</h1>
-        <button type="button" className="ghost" onClick={toggleDarkMode}>
-          {darkMode ? "☀️ 라이트 모드" : "🌙 다크 모드"}
-        </button>
+        <div className="theme-toggle" role="group" aria-label="테마 선택">
+          <button
+            type="button"
+            className={`theme-chip ${!darkMode ? "active" : ""}`}
+            onClick={() => handleThemeSelect("light")}
+          >
+            ☀️ 라이트
+          </button>
+          <button
+            type="button"
+            className={`theme-chip ${darkMode ? "active" : ""}`}
+            onClick={() => handleThemeSelect("dark")}
+          >
+            🌙 다크
+          </button>
+        </div>
       </div>
       <p className="sugar-subtitle">
         빈칸 사진과 조각 사진을 업로드한 뒤, 격자를 직접 표시하고 보유 중인 조각을
@@ -436,33 +435,37 @@ const SugarOptimizer = () => {
             </button>
           </div>
           <div className="inventory-panels">
-            <div className="inventory-box scrollable">
-              <div className="piece-form">
-                <div className="piece-form-row compact">
-                  <label>
-                    수식어 ({ROLE_LABELS[playerRole]})
-                    <select
-                      value={newPiece.modifier}
-                      onChange={(e) => handleNewPieceChange("modifier", e.target.value)}
-                    >
-                      {modifiersForRole.map((modifier) => (
-                        <option key={modifier} value={modifier}>
-                          {modifier}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    등급
-                    <select value={newPiece.grade} onChange={(e) => handleNewPieceChange("grade", e.target.value)}>
-                      {gradeEntries.map(([value, info]) => (
-                        <option key={value} value={value}>
-                          {info.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+            <div className="inventory-column">
+              <div className="inventory-box scrollable">
+                <div className="piece-form">
+                  <div className="piece-form-row compact">
+                    <label>
+                      수식어 ({ROLE_LABELS[playerRole]})
+                      <select
+                        value={newPiece.modifier}
+                        onChange={(e) => handleNewPieceChange("modifier", e.target.value)}
+                      >
+                        {modifiersForRole.map((modifier) => (
+                          <option key={modifier} value={modifier}>
+                            {modifier}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      등급
+                      <select
+                        value={newPiece.grade}
+                        onChange={(e) => handleNewPieceChange("grade", e.target.value)}
+                      >
+                        {gradeEntries.map(([value, info]) => (
+                          <option key={value} value={value}>
+                            {info.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                 <p className="piece-hint">
                   최대 {gradeSelectionInfo?.maxCells || "무제한"}칸 조각까지 담을 수 있습니다. 아래 모양을
                   누르면 즉시 목록에 추가됩니다.
@@ -495,50 +498,53 @@ const SugarOptimizer = () => {
               </div>
 
               <p className="piece-hint">{ROLE_LABELS[playerRole]} 전용 조각만 추가됩니다.</p>
+              </div>
             </div>
 
-            <div className="inventory-box scrollable" aria-live="polite">
-              <div className="inventory-summary">
-                <span>수식어별로 조각을 확인하세요.</span>
-                <span>드래그하여 옆으로 넘길 수 있습니다.</span>
-              </div>
-              {groupedPieces.length > 0 ? (
-                <div className="modifier-groups-column">
-                  {groupedPieces.map((group) => (
-                    <div key={group.modifier} className="modifier-group">
-                      <div className="modifier-group-header">
-                        <span>{group.modifier}</span>
-                        <span>{group.pieces.length}개</span>
-                      </div>
-                      <div className="piece-gallery" role="list">
-                        {group.pieces.map((piece) => {
-                          const info = GRADE_INFO[piece.grade];
-                          const shape = shapeLookup.get(piece.shapeKey);
-                          return (
-                            <div key={piece.id} className="piece-card compact" role="listitem">
-                              <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={14} />
-                              <div className="piece-card-body">
-                                <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
-                                  {info?.label}
-                                </div>
-                                <div className="piece-card-details">
-                                  <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
-                                  <span className="piece-card-modifier">{piece.modifier}</span>
-                                </div>
-                              </div>
-                              <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
-                                삭제
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+            <div className="inventory-column">
+              <div className="inventory-box vertical-list" aria-live="polite">
+                <div className="inventory-summary">
+                  <span>수식어별로 조각을 확인하세요.</span>
+                  <span>필요 시 스크롤하여 비교하세요.</span>
                 </div>
-              ) : (
-                <p className="empty-text">추가된 조각이 없습니다.</p>
-              )}
+                {groupedPieces.length > 0 ? (
+                  <div className="modifier-groups-column">
+                    {groupedPieces.map((group) => (
+                      <div key={group.modifier} className="modifier-group">
+                        <div className="modifier-group-header">
+                          <span>{group.modifier}</span>
+                          <span>{group.pieces.length}개</span>
+                        </div>
+                        <div className="piece-gallery" role="list">
+                          {group.pieces.map((piece) => {
+                            const info = GRADE_INFO[piece.grade];
+                            const shape = shapeLookup.get(piece.shapeKey);
+                            return (
+                              <div key={piece.id} className="piece-card compact" role="listitem">
+                                <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={14} />
+                                <div className="piece-card-body">
+                                  <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
+                                    {info?.label}
+                                  </div>
+                                  <div className="piece-card-details">
+                                    <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
+                                    <span className="piece-card-modifier">{piece.modifier}</span>
+                                  </div>
+                                </div>
+                                <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
+                                  삭제
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-text">추가된 조각이 없습니다.</p>
+                )}
+              </div>
             </div>
           </div>
         </section>
