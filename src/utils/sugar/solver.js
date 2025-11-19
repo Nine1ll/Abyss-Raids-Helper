@@ -1,5 +1,5 @@
 import { sugarShapes } from "./shapes";
-import { getPieceBaseScore, summarizeBonuses } from "./score";
+import { getPieceBaseScore, summarizeBonuses, getBonusFromModifier } from "./score";
 import { GRADE_INFO } from "../../constants/sugar";
 
 const clonePlacements = (placements) =>
@@ -14,6 +14,10 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
   const totalCells = rows * cols;
   let blockedMask = 0n;
   const blockedKeySet = new Set();
+
+  const bitCache = Array.from({ length: rows }, (_, row) =>
+    Array.from({ length: cols }, (_, col) => bitForCell(row, col, cols))
+  );
 
   blocked.forEach(({ row, col }) => {
     if (row >= 0 && row < rows && col >= 0 && col < cols) {
@@ -41,7 +45,7 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
           const cell = shape.cells[i];
           const row = startRow + cell.row;
           const col = startCol + cell.col;
-          const bit = bitForCell(row, col, cols);
+          const bit = bitCache[row][col];
           if ((blockedMask & bit) !== 0n) {
             fits = false;
             break;
@@ -94,11 +98,28 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     };
   }
 
-  expandedPieces.sort((a, b) => b.baseScore - a.baseScore || b.area - a.area);
+  expandedPieces.sort((a, b) => {
+    if (a.placements.length !== b.placements.length) {
+      return a.placements.length - b.placements.length;
+    }
+    if (b.baseScore !== a.baseScore) {
+      return b.baseScore - a.baseScore;
+    }
+    return b.area - a.area;
+  });
 
   const suffixBase = new Array(expandedPieces.length + 1).fill(0);
   for (let i = expandedPieces.length - 1; i >= 0; i -= 1) {
     suffixBase[i] = suffixBase[i + 1] + expandedPieces[i].baseScore;
+  }
+
+  const modifierSuffix = new Array(expandedPieces.length + 1);
+  modifierSuffix[expandedPieces.length] = new Map();
+  for (let i = expandedPieces.length - 1; i >= 0; i -= 1) {
+    const next = new Map(modifierSuffix[i + 1]);
+    const piece = expandedPieces[i];
+    next.set(piece.modifier, (next.get(piece.modifier) || 0) + piece.area);
+    modifierSuffix[i] = next;
   }
 
   let bestResult = {
@@ -126,13 +147,27 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     }
   };
 
+  const futureBonusBound = (index) => {
+    const future = modifierSuffix[index];
+    if (!future) return 0;
+    let optimistic = 0;
+    future.forEach((area, modifier) => {
+      const placed = modifierTotals[modifier] || 0;
+      const maxCells = Math.min(placed + area, 21);
+      const potential = getBonusFromModifier(maxCells);
+      const existing = getBonusFromModifier(placed);
+      optimistic += potential - existing;
+    });
+    return optimistic;
+  };
+
   const dfs = (index, baseScore, remainingFree, occupiedMask) => {
     if (index === expandedPieces.length) {
       evaluate(baseScore);
       return;
     }
 
-    const optimisticBonus = Math.ceil(Math.max(remainingFree, 0) / 3) * 265;
+    const optimisticBonus = futureBonusBound(index);
     if (baseScore + suffixBase[index] + optimisticBonus <= bestResult.totalScore) {
       return;
     }

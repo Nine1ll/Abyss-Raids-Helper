@@ -283,6 +283,7 @@ const SugarOptimizer = () => {
     () => pieces.filter((piece) => piece.role === playerRole),
     [pieces, playerRole]
   );
+  const playerPieceCount = playerPieces.length;
   const modifierOrder = useMemo(() => {
     const map = new Map();
     modifiersForRole.forEach((modifier, index) => {
@@ -427,7 +428,9 @@ const SugarOptimizer = () => {
 
         <section className="sugar-card inventory-card">
           <div className="sugar-section-title inventory-title-row">
-            <span>2. 보유 중인 설탕 유리조각</span>
+            <span>
+              2. 보유 중인 설탕 유리조각 <span className="inventory-count">({playerPieceCount}개)</span>
+            </span>
             <button type="button" className="ghost small" onClick={handleResetPieces}>
               보유 조각 초기화
             </button>
@@ -495,79 +498,47 @@ const SugarOptimizer = () => {
             </div>
 
             <div className="inventory-box scrollable" aria-live="polite">
-              {playerPieces.length > 0 ? (
-                <div className="piece-tray">
-                  <div className="piece-tray-header">
-                    <div>
-                      전체 조각 미리보기 <span className="piece-tray-count">({playerPieces.length}개)</span>
+              <div className="inventory-summary">
+                <span>수식어별로 조각을 확인하세요.</span>
+                <span>드래그하여 옆으로 넘길 수 있습니다.</span>
+              </div>
+              {groupedPieces.length > 0 ? (
+                <div className="modifier-groups-column">
+                  {groupedPieces.map((group) => (
+                    <div key={group.modifier} className="modifier-group">
+                      <div className="modifier-group-header">
+                        <span>{group.modifier}</span>
+                        <span>{group.pieces.length}개</span>
+                      </div>
+                      <div className="piece-gallery" role="list">
+                        {group.pieces.map((piece) => {
+                          const info = GRADE_INFO[piece.grade];
+                          const shape = shapeLookup.get(piece.shapeKey);
+                          return (
+                            <div key={piece.id} className="piece-card compact" role="listitem">
+                              <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={14} />
+                              <div className="piece-card-body">
+                                <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
+                                  {info?.label}
+                                </div>
+                                <div className="piece-card-details">
+                                  <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
+                                  <span className="piece-card-modifier">{piece.modifier}</span>
+                                </div>
+                              </div>
+                              <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
+                                삭제
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <span>스크롤하여 더 보기</span>
-                  </div>
-                  <div className="piece-tray-scroll">
-                    {playerPieces.map((piece) => {
-                      const info = GRADE_INFO[piece.grade];
-                      const shape = shapeLookup.get(piece.shapeKey);
-                      return (
-                        <div key={piece.id} className="piece-chip">
-                          <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={12} />
-                          <div className="piece-chip-meta">
-                            <span className="piece-chip-grade" style={{ color: info?.color || "#475569" }}>
-                              {info?.label}
-                            </span>
-                            <span className="piece-chip-detail">
-                              {piece.modifier} · {shape?.area ?? "?"}칸 · x{piece.quantity || 1}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="ghost"
-                            onClick={() => handleRemovePiece(piece.id)}
-                            aria-label={`${piece.modifier} 조각 삭제`}
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  ))}
                 </div>
               ) : (
                 <p className="empty-text">추가된 조각이 없습니다.</p>
               )}
-
-              <div className="modifier-groups-row">
-                {groupedPieces.map((group) => (
-                  <div key={group.modifier} className="modifier-group">
-                    <div className="modifier-group-header">
-                      <span>{group.modifier}</span>
-                      <span>{group.pieces.length}개</span>
-                    </div>
-                    <div className="piece-gallery">
-                      {group.pieces.map((piece) => {
-                        const info = GRADE_INFO[piece.grade];
-                        const shape = shapeLookup.get(piece.shapeKey);
-                        return (
-                          <div key={piece.id} className="piece-card compact">
-                            <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={14} />
-                            <div className="piece-card-body">
-                              <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
-                                {info?.label}
-                              </div>
-                              <div className="piece-card-details">
-                                <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
-                                <span className="piece-card-modifier">{piece.modifier}</span>
-                              </div>
-                            </div>
-                            <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
-                              삭제
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </section>
