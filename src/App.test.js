@@ -1,8 +1,13 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
+import { render, screen } from "@testing-library/react";
+import App from "./App";
+import { ThemeProvider } from "./context/ThemeContext";
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+test("renders both simulators", () => {
+  render(
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  );
+  expect(screen.getByText(/시즈나이트 시뮬레이터/)).toBeInTheDocument();
+  expect(screen.getByText(/설탕 유리 배치 도우미/)).toBeInTheDocument();
 });
