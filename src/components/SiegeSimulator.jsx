@@ -135,7 +135,7 @@ const SiegeSimulator = () => {
         <strong>{(topProb * 100).toFixed(2)}%</strong>
       </div>
 
-      <h1>🍪 CTOA: 시즈나이트 추천 시스템</h1>
+      <h1>🍪 CTOA: 시즈나이트 선택지 최적화</h1>
 
       <HelpBox
         show={showHelp}

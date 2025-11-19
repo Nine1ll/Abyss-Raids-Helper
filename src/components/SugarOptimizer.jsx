@@ -498,10 +498,9 @@ const SugarOptimizer = ({ appState, setAppState }) => {
 
   return (
     <div className={`sugar-view ${darkMode ? "dark" : ""}`}>
-      <h1 className="sugar-title">설탕 유리 조각 배치</h1>
-
+      <h1 className="sugar-title">🍪 CTOA: 설탕 유리조각 최적 배치</h1>
       <p className="sugar-subtitle">
-        아직 사진은 지원하지 않습니다. 추후 일정 크기의 사진으로 입력받아 자동 입력되게 만들겠습니다. 죄송합니다.
+        아직 사진은 지원하지 않습니다. 알고리즘도 완벽하게 동작하지 않습니다. 죄송합니다. (추후 수정 예정)
       </p>
 
       <div className="theme-toggle-right">

@@ -123,14 +123,14 @@ const App = () => {
             className={`header-btn ${activeView === "siege" ? "active" : ""}`}
             onClick={() => setActiveView("siege")}
           >
-            시즈나이트 깍기
+            시즈나이트 선택지 최적화
           </button>
           <button
             type="button"
             className={`header-btn ${activeView === "sugar" ? "active" : ""}`}
             onClick={() => setActiveView("sugar")}
           >
-            설탕 유리 조각 배치
+            설탕 유리조각 최적 배치
           </button>
         </div>
       </div>
