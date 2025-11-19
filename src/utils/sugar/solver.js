@@ -1,3 +1,5 @@
+// src/utils/sugar/solver.js
+
 import { sugarShapes } from "./shapes";
 import { getPieceBaseScore, summarizeBonuses, getBonusFromModifier } from "./score";
 import { GRADE_INFO } from "../../constants/sugar";
@@ -18,7 +20,7 @@ const createEmptyResult = () => ({
   bonusBreakdown: [],
 });
 
-export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, maxDepth = 15 }) => {
+export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role }) => {
   const totalCells = rows * cols;
   if (totalCells <= 0) {
     return createEmptyResult();
@@ -91,13 +93,19 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
     return placements;
   };
 
+  // -----------------------------
+  // Piece pool 구성
+  // -----------------------------
   const piecePool = [];
   pieces.forEach((piece, pieceIndex) => {
     if (!piece || piece.role !== role) return;
+
     const quantity = Math.max(0, Number(piece.quantity) || 0);
     if (quantity <= 0) return;
+
     const shape = sugarShapes[piece.shapeKey];
     if (!shape) return;
+
     const gradeInfo = GRADE_INFO[piece.grade];
     const maxCells = gradeInfo?.maxCells;
     if (maxCells && shape.area > maxCells) return;
@@ -105,10 +113,16 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
     const placements = getPlacementsForShape(shape);
     if (!placements.length) return;
 
+    const isUnique = piece.grade === "unique";
+
+    // ✅ 유니크는 최대 1개만 사용 가능
+    const effectiveQuantity = isUnique ? Math.min(quantity, 1) : quantity;
+
     const baseScore = getPieceBaseScore(piece.grade, shape.area);
     const entry = {
       uid: piece.id || `${piece.shapeKey}-${pieceIndex}`,
-      modifier: piece.modifier,
+      // ✅ 유니크는 수식어가 없으므로 "-"로 고정(표시용)
+      modifier: isUnique ? "-" : piece.modifier,
       grade: piece.grade,
       gradeLabel: gradeInfo?.label || piece.grade,
       shapeKey: piece.shapeKey,
@@ -116,8 +130,10 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
       baseScore,
       placements,
       placementsByCell: new Map(),
-      remaining: quantity,
+      remaining: effectiveQuantity,
       used: 0,
+      // ✅ 유니크 여부 플래그
+      isUnique,
     };
 
     placements.forEach((placement) => {
@@ -136,6 +152,9 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
     return createEmptyResult();
   }
 
+  // -----------------------------
+  // 각 칸에 얹을 수 있는 경우의 수(coverage) 계산
+  // -----------------------------
   const coverageCounts = new Array(totalCells).fill(0);
   piecePool.forEach((entry) => {
     entry.placements.forEach((placement) => {
@@ -145,21 +164,28 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
     });
   });
 
+  // -----------------------------
+  // 수식어 보너스 잠재력 및 초기 base score 합계
+  // (유니크는 수식어가 없으므로 제외)
+  // -----------------------------
   const modifierPotential = {};
   let unusedBaseScore = 0;
   piecePool.forEach((entry) => {
     unusedBaseScore += entry.baseScore * entry.remaining;
-    modifierPotential[entry.modifier] =
-      (modifierPotential[entry.modifier] || 0) + entry.area * entry.remaining;
+    if (!entry.isUnique) {
+      modifierPotential[entry.modifier] =
+        (modifierPotential[entry.modifier] || 0) + entry.area * entry.remaining;
+    }
   });
 
+  // 큰 모양, 점수 높은 것 우선 탐색
   piecePool.sort((a, b) => {
     if (b.area !== a.area) return b.area - a.area;
     if (b.baseScore !== a.baseScore) return b.baseScore - a.baseScore;
     return a.modifier.localeCompare(b.modifier, "ko-KR");
   });
 
-  const modifierTotals = {};
+  const modifierTotals = {}; // 실제 배치된 수식어별 칸 수
   const placementsStack = [];
   let bestResult = createEmptyResult();
   const visitedStates = new Map();
@@ -198,6 +224,7 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
       if ((freeMask & bit) === 0n) continue;
       const score = coverageCounts[index];
       if (score === 0) {
+        // 아무 조각도 못 올리는 칸이면 그냥 여기부터 메우기
         return bit;
       }
       if (score < bestScore) {
@@ -206,23 +233,23 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
         if (score === 1) break;
       }
     }
+    // 그래도 못 찾으면 freeMask 중 가장 낮은 비트
     return bestBit || (freeMask & -freeMask);
   };
 
-  const dfs = (occupiedMask, baseScore, unusedScore, depth = 0) => {
-    // maxDepth 추가
-    if (depth > maxDepth) {
-      evaluate(baseScore);
-      return;
-    }
-
+  // ------------------------------------
+  // DFS
+  // uniqueUsed: 지금까지 유니크를 몇 개 썼는지 (0 또는 1)
+  // ------------------------------------
+  const dfs = (occupiedMask, baseScore, unusedScore, uniqueUsed = 0, depth = 0) => {
     const optimisticBonus = futureBonusBound();
     const optimisticTotal = baseScore + unusedScore + optimisticBonus;
     if (optimisticTotal <= bestResult.totalScore) {
       return;
     }
 
-    const stateKey = occupiedMask.toString(16);
+    // ✅ 상태키에 uniqueUsed 포함 (유니크 사용 여부까지 상태로 봄)
+    const stateKey = occupiedMask.toString(16) + "|" + uniqueUsed;
     const seenBest = visitedStates.get(stateKey);
     if (typeof seenBest !== "undefined" && optimisticTotal <= seenBest) {
       return;
@@ -243,13 +270,20 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
 
     const targetIndex = bitToIndex.get(targetBit);
     if (typeof targetIndex === "undefined") {
-      dfs(occupiedMask | targetBit, baseScore, unusedScore, depth + 1);
+      dfs(occupiedMask | targetBit, baseScore, unusedScore, uniqueUsed, depth + 1);
       return;
     }
 
+    // ------------------------------------
+    // Option 1: targetIndex를 포함하는 조각들을 시도
+    // ------------------------------------
     for (let entryIndex = 0; entryIndex < piecePool.length; entryIndex += 1) {
       const entry = piecePool[entryIndex];
       if (entry.remaining <= 0) continue;
+
+      // ✅ 유니크는 전역적으로 최대 1개만 허용
+      if (entry.isUnique && uniqueUsed >= 1) continue;
+
       const placementList = entry.placementsByCell.get(targetIndex);
       if (!placementList || !placementList.length) continue;
 
@@ -260,15 +294,22 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
         entry.remaining -= 1;
         const placementId = `${entry.uid}-${entry.used}`;
         entry.used += 1;
-        modifierTotals[entry.modifier] = (modifierTotals[entry.modifier] || 0) + entry.area;
-        modifierPotential[entry.modifier] = Math.max(
-          0,
-          (modifierPotential[entry.modifier] || 0) - entry.area
-        );
+
+        if (!entry.isUnique) {
+          // ✅ 유니크는 수식어/보너스와 무관
+          modifierTotals[entry.modifier] = (modifierTotals[entry.modifier] || 0) + entry.area;
+          modifierPotential[entry.modifier] = Math.max(
+            0,
+            (modifierPotential[entry.modifier] || 0) - entry.area
+          );
+        }
 
         placementsStack.push({
           id: placementId,
-          label: `${entry.modifier} · ${entry.gradeLabel} · ${entry.area}칸`,
+          // ✅ 유니크는 수식어 없이 표기
+          label: entry.isUnique
+            ? `${entry.gradeLabel} · ${entry.area}칸`
+            : `${entry.modifier} · ${entry.gradeLabel} · ${entry.area}칸`,
           grade: entry.grade,
           modifier: entry.modifier,
           baseScore: entry.baseScore,
@@ -276,25 +317,39 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role, m
           cells: placement.cells,
         });
 
-        dfs(occupiedMask | placement.mask, baseScore + entry.baseScore, unusedScore - entry.baseScore, depth + 1);
+        const nextOccupied = occupiedMask | placement.mask;
+        const nextBase = baseScore + entry.baseScore;
+        const nextUnused = unusedScore - entry.baseScore;
+
+        if (entry.isUnique) {
+          dfs(nextOccupied, nextBase, nextUnused, uniqueUsed + 1, depth + 1);
+        } else {
+          dfs(nextOccupied, nextBase, nextUnused, uniqueUsed, depth + 1);
+        }
 
         placementsStack.pop();
-        modifierTotals[entry.modifier] -= entry.area;
-        if (modifierTotals[entry.modifier] <= 0) {
-          delete modifierTotals[entry.modifier];
+
+        if (!entry.isUnique) {
+          modifierTotals[entry.modifier] -= entry.area;
+          if (modifierTotals[entry.modifier] <= 0) {
+            delete modifierTotals[entry.modifier];
+          }
+          modifierPotential[entry.modifier] =
+            (modifierPotential[entry.modifier] || 0) + entry.area;
         }
-        modifierPotential[entry.modifier] =
-          (modifierPotential[entry.modifier] || 0) + entry.area;
+
         entry.used -= 1;
         entry.remaining += 1;
       }
     }
 
-    // Option 2: intentionally leave the cell empty.
-    dfs(occupiedMask | targetBit, baseScore, unusedScore, depth + 1);
+    // ------------------------------------
+    // Option 2: 이 칸은 비워두고 진행
+    // ------------------------------------
+    dfs(occupiedMask | targetBit, baseScore, unusedScore, uniqueUsed, depth + 1);
   };
 
-  dfs(blockedMask, 0, unusedBaseScore, 0);
+  dfs(blockedMask, 0, unusedBaseScore, 0, 0);
 
   return bestResult;
 };

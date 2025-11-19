@@ -1,3 +1,5 @@
+// src/utils/sugar/shapes.js
+
 const shapes = {};
 
 const register = (key, matrix) => {
@@ -198,6 +200,7 @@ register("5_U_right", [
   [1, 1],
 ]);
 
+// 8칸 모양들 (유니크 등급용)
 register("8_snake_v", [
   [1, 0],
   [1, 1],

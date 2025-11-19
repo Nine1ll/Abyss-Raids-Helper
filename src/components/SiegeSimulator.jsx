@@ -12,7 +12,7 @@ import { ACTION_LABEL } from "../constants/actionLabels";
 const getInitialTurns = (mode) => (mode === "super_epic" ? 8 : 7);
 
 const SiegeSimulator = () => {
-  const { darkMode, toggleDarkMode } = useContext(ThemeContext);
+  const { darkMode, setDarkMode } = useContext(ThemeContext); // setDarkMode 사용
   const [showHelp, setShowHelp] = useState(false);
 
   const [mode, setMode] = useState("super_epic");
@@ -119,6 +119,15 @@ const SiegeSimulator = () => {
     handleReset(nextMode);
   };
 
+  // 테마 토글 핸들러
+  const handleThemeSelect = (mode) => {
+    if (mode === "dark") {
+      setDarkMode(true);
+    } else if (mode === "light") {
+      setDarkMode(false);
+    }
+  };
+
   return (
     <div className="siege-view">
       <div className={`info-box ${darkMode ? "dark" : ""}`}>
@@ -149,6 +158,7 @@ const SiegeSimulator = () => {
         </strong>
       </div>
 
+      {/* 테마 토글을 초기화 버튼 옆에 배치 */}
       <div className="header-controls">
         <div className="mode-selector">
           <label>모드: </label>
@@ -158,9 +168,22 @@ const SiegeSimulator = () => {
           </select>
         </div>
         <div className="theme-buttons">
-          <button onClick={toggleDarkMode} className="theme-btn">
-            {darkMode ? "☀️ 라이트모드" : "🌙 다크모드"}
-          </button>
+          <div className="theme-toggle" role="group" aria-label="테마 선택">
+            <button
+              type="button"
+              className={`theme-chip ${!darkMode ? "active" : ""}`}
+              onClick={() => handleThemeSelect("light")}
+            >
+              ☀️ 라이트
+            </button>
+            <button
+              type="button"
+              className={`theme-chip ${darkMode ? "active" : ""}`}
+              onClick={() => handleThemeSelect("dark")}
+            >
+              🌙 다크
+            </button>
+          </div>
           <button onClick={handleReset} className="reset-btn">
             🔄 초기화
           </button>
@@ -206,6 +229,7 @@ const SiegeSimulator = () => {
 
       <LogPanel logs={logs} />
 
+      {/* 푸터 추가 */}
       <footer className={darkMode ? "dark" : ""}>
         Feedback은{" "}
         <a
