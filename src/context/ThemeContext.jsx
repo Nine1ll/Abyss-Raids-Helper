@@ -11,10 +11,11 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     localStorage.setItem('darkMode', darkMode);
+    const className = 'dark-mode';
     if (darkMode) {
-      document.body.classList.add('dark');
+      document.body.classList.add(className);
     } else {
-      document.body.classList.remove('dark');
+      document.body.classList.remove(className);
     }
   }, [darkMode]);
 
