@@ -10,7 +10,7 @@ const App = () => {
 
   return (
     <div className={`App ${darkMode ? "dark" : ""}`}>
-      <div className="view-tabs">
+      <div className={`view-tabs ${darkMode ? "dark" : ""}`}>
         <button
           className={activeView === "siege" ? "active" : ""}
           onClick={() => setActiveView("siege")}

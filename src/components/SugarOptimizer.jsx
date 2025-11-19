@@ -53,27 +53,29 @@ const createInitialBlockedCells = () => {
 const gradeEntries = Object.entries(GRADE_INFO);
 const shapeEntries = SHAPE_OPTIONS;
 
-const ShapePreview = ({ shape, color = "#475569", size = 72 }) => {
+const ShapePreview = ({ shape, color = "#475569", cellSize = 16 }) => {
   if (!shape) return null;
-  const maxDimension = Math.max(shape.width, shape.height);
-  const trackSize = `${100 / maxDimension}%`;
   const previewStyle = {
-    gridTemplateColumns: `repeat(${shape.width}, ${trackSize})`,
-    gridTemplateRows: `repeat(${shape.height}, ${trackSize})`,
-    width: size,
-    height: size,
+    gridTemplateColumns: `repeat(${shape.width}, ${cellSize}px)`,
+    gridTemplateRows: `repeat(${shape.height}, ${cellSize}px)`,
+  };
+  const wrapperStyle = {
+    width: `${cellSize * 5}px`,
+    height: `${cellSize * 5}px`,
   };
   return (
-    <div className="shape-preview" style={previewStyle}>
-      {shape.matrix.map((row, rowIndex) =>
-        row.map((value, colIndex) => (
-          <span
-            key={`${rowIndex}-${colIndex}`}
-            className={`shape-preview-cell ${value ? "filled" : ""}`}
-            style={value ? { backgroundColor: color } : undefined}
-          />
-        ))
-      )}
+    <div className="shape-preview-wrapper" style={wrapperStyle}>
+      <div className="shape-preview" style={previewStyle}>
+        {shape.matrix.map((row, rowIndex) =>
+          row.map((value, colIndex) => (
+            <span
+              key={`${rowIndex}-${colIndex}`}
+              className={`shape-preview-cell ${value ? "filled" : ""}`}
+              style={value ? { backgroundColor: color } : undefined}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 };
@@ -337,27 +339,40 @@ const SugarOptimizer = () => {
       <div className="sugar-layout">
         <section className="sugar-card">
           <div className="sugar-section-title">1. 보드 설정</div>
-          <div className="board-settings">
-            <label>
-              직업
-              <select value={playerRole} onChange={(e) => updateRole(e.target.value)}>
-                {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className="role-selector">
+            <div className="role-selector-header">
+              <span>역할군 선택</span>
+              <span>사용 가능한 수식어 목록을 한 번에 확인하세요.</span>
+            </div>
+            <div className="role-button-row" role="group" aria-label="역할군 선택">
+              {Object.entries(ROLE_LABELS).map(([value, label]) => {
+                const modifiers = ROLE_MODIFIERS[value] || [];
+                const modifierLabel = modifiers.length ? modifiers.join(" · ") : "수식어 정보 없음";
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`role-button ${playerRole === value ? "active" : ""}`}
+                    aria-pressed={playerRole === value}
+                    onClick={() => updateRole(value)}
+                  >
+                    <span className="role-button-label">{label}</span>
+                    <span className="role-button-modifiers">{modifierLabel}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <p className="board-hint">
-            처음에는 중앙 3×5 칸만 열려 있습니다. 잠긴 칸을 클릭하면 🔒 표시가 사라지며,
-            다시 클릭하면 잠글 수 있습니다.
+            중앙 3×5칸만 열린 상태로 시작합니다. 잠긴 칸(🔒)을 다시 누르면 열리고, 열린 칸을
+            다시 누르면 잠글 수 있습니다.
           </p>
 
           <div className="sugar-grid-frame">
             <div
-              className="sugar-grid"
+              className={`sugar-grid ${isSolving ? "busy" : ""}`}
+              aria-busy={isSolving}
               style={{
                 gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)`,
                 gridTemplateRows: `repeat(${BOARD_SIZE}, 1fr)`,
@@ -387,136 +402,144 @@ const SugarOptimizer = () => {
           </div>
         </section>
 
-        <section className="sugar-card">
+        <section className="sugar-card inventory-card">
           <div className="sugar-section-title">2. 보유 중인 설탕 유리조각</div>
-          <div className="piece-form">
-            <div className="piece-form-row compact">
-              <label>
-                수식어 ({ROLE_LABELS[playerRole]})
-                <select
-                  value={newPiece.modifier}
-                  onChange={(e) => handleNewPieceChange("modifier", e.target.value)}
-                >
-                  {modifiersForRole.map((modifier) => (
-                    <option key={modifier} value={modifier}>
-                      {modifier}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                등급
-                <select value={newPiece.grade} onChange={(e) => handleNewPieceChange("grade", e.target.value)}>
-                  {gradeEntries.map(([value, info]) => (
-                    <option key={value} value={value}>
-                      {info.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+          <div className="inventory-panels">
+            <div className="inventory-box scrollable">
+              <div className="piece-form">
+                <div className="piece-form-row compact">
+                  <label>
+                    수식어 ({ROLE_LABELS[playerRole]})
+                    <select
+                      value={newPiece.modifier}
+                      onChange={(e) => handleNewPieceChange("modifier", e.target.value)}
+                    >
+                      {modifiersForRole.map((modifier) => (
+                        <option key={modifier} value={modifier}>
+                          {modifier}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    등급
+                    <select value={newPiece.grade} onChange={(e) => handleNewPieceChange("grade", e.target.value)}>
+                      {gradeEntries.map(([value, info]) => (
+                        <option key={value} value={value}>
+                          {info.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <p className="piece-hint">
+                  최대 {gradeSelectionInfo?.maxCells || "무제한"}칸 조각까지 담을 수 있습니다. 아래 모양을
+                  누르면 즉시 목록에 추가됩니다.
+                </p>
+              </div>
+
+              <div className="shape-groups">
+                {allowedShapeGroups.length === 0 && (
+                  <p className="empty-text">선택한 등급에서 사용할 수 있는 모양이 없습니다.</p>
+                )}
+                {allowedShapeGroups.map((group) => (
+                  <div key={group.area} className="shape-group">
+                    <div className="shape-group-title">{group.area}칸 조각</div>
+                    <div className="shape-group-grid">
+                      {group.shapes.map((shape) => (
+                        <button
+                          key={shape.key}
+                          type="button"
+                          className="shape-option add"
+                          onClick={() => handleAddShape(shape.key)}
+                          aria-label={`${group.area}칸 모양 추가`}
+                        >
+                          <ShapePreview shape={shape} color={GRADE_INFO[newPiece.grade]?.color} />
+                          <span className="shape-area-label">+{group.area}칸</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="piece-hint">{ROLE_LABELS[playerRole]} 전용 조각만 추가됩니다.</p>
             </div>
-            <p className="piece-hint">
-              선택한 등급은 최대 {gradeSelectionInfo?.maxCells || "무제한"}칸 조각까지 추가할 수 있습니다.
-              아래 모양을 클릭하면 즉시 보유 목록에 더해집니다.
-            </p>
-            <div className="shape-groups">
-              {allowedShapeGroups.length === 0 && (
-                <p className="empty-text">선택한 등급에서 사용할 수 있는 모양이 없습니다.</p>
+
+            <div className="inventory-box scrollable" aria-live="polite">
+              {playerPieces.length > 0 ? (
+                <div className="piece-tray">
+                  <div className="piece-tray-header">
+                    <div>
+                      전체 조각 미리보기 <span className="piece-tray-count">({playerPieces.length}개)</span>
+                    </div>
+                    <span>드래그하여 더 보기</span>
+                  </div>
+                  <div className="piece-tray-scroll">
+                    {playerPieces.map((piece) => {
+                      const info = GRADE_INFO[piece.grade];
+                      const shape = shapeLookup.get(piece.shapeKey);
+                      return (
+                        <div key={piece.id} className="piece-chip">
+                          <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={12} />
+                          <div className="piece-chip-meta">
+                            <span className="piece-chip-grade" style={{ color: info?.color || "#475569" }}>
+                              {info?.label}
+                            </span>
+                            <span className="piece-chip-detail">
+                              {piece.modifier} · {shape?.area ?? "?"}칸 · x{piece.quantity || 1}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => handleRemovePiece(piece.id)}
+                            aria-label={`${piece.modifier} 조각 삭제`}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="empty-text">추가된 조각이 없습니다.</p>
               )}
-              {allowedShapeGroups.map((group) => (
-                <div key={group.area} className="shape-group">
-                  <div className="shape-group-title">{group.area}칸 조각</div>
-                  <div className="shape-group-grid">
-                    {group.shapes.map((shape) => (
-                      <button
-                        key={shape.key}
-                        type="button"
-                        className="shape-option add"
-                        onClick={() => handleAddShape(shape.key)}
-                        aria-label={`${group.area}칸 모양 추가`}
-                      >
-                        <ShapePreview shape={shape} color={GRADE_INFO[newPiece.grade]?.color} />
-                        <span className="shape-area-label">+{group.area}칸</span>
-                      </button>
-                    ))}
+
+              {groupedPieces.map((group) => (
+                <div key={group.modifier} className="modifier-group">
+                  <div className="modifier-group-header">
+                    <span>{group.modifier}</span>
+                    <span>{group.pieces.length}개</span>
+                  </div>
+                  <div className="piece-gallery">
+                    {group.pieces.map((piece) => {
+                      const info = GRADE_INFO[piece.grade];
+                      const shape = shapeLookup.get(piece.shapeKey);
+                      return (
+                        <div key={piece.id} className="piece-card compact">
+                          <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={14} />
+                          <div className="piece-card-body">
+                            <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
+                              {info?.label}
+                            </div>
+                            <div className="piece-card-details">
+                              <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
+                              <span className="piece-card-modifier">{piece.modifier}</span>
+                            </div>
+                          </div>
+                          <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
+                            삭제
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          <p className="piece-hint">{ROLE_LABELS[playerRole]} 전용 조각만 표시되고 추가됩니다.</p>
-
-          {playerPieces.length > 0 && (
-            <div className="piece-tray">
-              <div className="piece-tray-header">
-                <div>
-                  전체 조각 미리보기 <span className="piece-tray-count">({playerPieces.length}개)</span>
-                </div>
-                <span>드래그하여 더 보기</span>
-              </div>
-              <div className="piece-tray-scroll">
-                {playerPieces.map((piece) => {
-                  const info = GRADE_INFO[piece.grade];
-                  const shape = shapeLookup.get(piece.shapeKey);
-                  return (
-                    <div key={piece.id} className="piece-chip">
-                      <ShapePreview shape={shape} color={info?.color || "#475569"} size={56} />
-                      <div className="piece-chip-meta">
-                        <span className="piece-chip-grade" style={{ color: info?.color || "#475569" }}>
-                          {info?.label}
-                        </span>
-                        <span className="piece-chip-detail">
-                          {piece.modifier} · {shape?.area ?? "?"}칸 · x{piece.quantity || 1}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="ghost"
-                        onClick={() => handleRemovePiece(piece.id)}
-                        aria-label={`${piece.modifier} 조각 삭제`}
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {groupedPieces.length === 0 && <p className="empty-text">추가된 조각이 없습니다.</p>}
-          {groupedPieces.map((group) => (
-            <div key={group.modifier} className="modifier-group">
-              <div className="modifier-group-header">
-                <span>{group.modifier}</span>
-                <span>{group.pieces.length}개</span>
-              </div>
-              <div className="piece-gallery">
-                {group.pieces.map((piece) => {
-                  const info = GRADE_INFO[piece.grade];
-                  const shape = shapeLookup.get(piece.shapeKey);
-                  return (
-                    <div key={piece.id} className="piece-card compact">
-                      <ShapePreview shape={shape} color={info?.color || "#475569"} size={60} />
-                      <div className="piece-card-body">
-                        <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
-                          {info?.label}
-                        </div>
-                        <div className="piece-card-details">
-                          <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
-                          <span className="piece-card-modifier">{piece.modifier}</span>
-                        </div>
-                      </div>
-                      <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
-                        삭제
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
         </section>
       </div>
 
@@ -524,12 +547,13 @@ const SugarOptimizer = () => {
         <button type="button" className="primary" onClick={handleSolve} disabled={isSolving}>
           {isSolving ? "계산 중..." : "최적 배치 계산"}
         </button>
+        <p className="actions-hint">잠긴 칸과 보유 조각을 설정한 뒤 계산 버튼을 눌러주세요.</p>
       </div>
 
       {isSolving && (
         <div className="solve-progress" role="status" aria-live="polite">
           <span className="solve-spinner" aria-hidden />
-          <span>최적 배치를 찾는 중입니다...</span>
+          <span>최적 배치를 계산 중입니다...</span>
         </div>
       )}
 
@@ -582,6 +606,18 @@ const SugarOptimizer = () => {
             })}
           </div>
         </section>
+      )}
+
+      {isSolving && (
+        <div className="solve-overlay" role="alert" aria-live="assertive">
+          <div className="solve-overlay-card">
+            <span className="solve-spinner large" aria-hidden />
+            <div>
+              <h3>최적 배치를 찾는 중입니다</h3>
+              <p>보유 조각이 많을수록 계산에 조금 더 시간이 필요할 수 있어요.</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

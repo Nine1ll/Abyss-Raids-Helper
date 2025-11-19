@@ -35,6 +35,11 @@ h1 {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+.App.dark h1 {
+  color: #facc15;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+}
+
 /* 상단 정보 박스 */
 .info-box {
   background-color: #f3f4f6;
@@ -578,51 +583,69 @@ footer.dark {
   color: white;
 }
 
+.view-tabs.dark button {
+  border-color: #fbbf24;
+  color: #fef9c3;
+}
+
+.view-tabs.dark button.active {
+  background: #facc15;
+  color: #1f2937;
+}
+
 /* =========================
    설탕 유리 배치 도우미
 ========================= */
 .sugar-view {
-  margin-top: 12px;
+  margin: 12px auto 40px;
+  max-width: 1200px;
 }
 
 .sugar-view h1 {
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .sugar-subtitle {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
   color: #475569;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .App.dark .sugar-subtitle {
-  color: #cbd5f5;
+  color: #e2e8f0;
 }
 
 .sugar-layout {
   display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
 }
 
 .sugar-card {
   background: white;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
 
 .App.dark .sugar-card {
-  background: #1f2937;
+  background: #111827;
   color: #f8fafc;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
 }
 
 .sugar-section-title {
   font-weight: 700;
-  margin-bottom: 12px;
-  color: #e56c2d;
+  margin-bottom: 16px;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.App.dark .sugar-section-title {
+  color: #fef3c7;
 }
 
 .board-settings {
@@ -638,6 +661,75 @@ footer.dark {
   background: rgba(37, 99, 235, 0.1);
   color: #1d4ed8;
   font-weight: 600;
+}
+
+.role-selector {
+  width: 100%;
+}
+
+.role-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+  color: #475569;
+  font-weight: 600;
+}
+
+.App.dark .role-selector-header {
+  color: #cbd5f5;
+}
+
+.role-button-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.role-button {
+  border: 2px solid #cbd5f5;
+  border-radius: 18px;
+  padding: 18px;
+  text-align: left;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.role-button.active {
+  border-color: #2563eb;
+  background: #dbeafe;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.15);
+}
+
+.role-button-label {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.role-button-modifiers {
+  font-size: 13px;
+  color: #475569;
+}
+
+.App.dark .role-button {
+  background: #0f172a;
+  border-color: #1e293b;
+  color: #f8fafc;
+}
+
+.App.dark .role-button.active {
+  border-color: #facc15;
+  background: rgba(250, 204, 21, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.App.dark .role-button-modifiers {
+  color: #cbd5f5;
 }
 
 .board-settings label {
@@ -672,6 +764,11 @@ footer.dark {
   margin-bottom: 12px;
   width: 100%;
   aspect-ratio: 1 / 1;
+}
+
+.sugar-grid.busy {
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 .sugar-grid-frame {
@@ -710,13 +807,15 @@ footer.dark {
 }
 
 .board-hint {
-  font-size: 13px;
-  color: #64748b;
-  margin-bottom: 12px;
+  font-size: 15px;
+  color: #1f2937;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.6;
 }
 
 .App.dark .board-hint {
-  color: #cbd5f5;
+  color: #f1f5f9;
 }
 
 .image-uploaders {
@@ -746,6 +845,34 @@ footer.dark {
   margin-bottom: 12px;
 }
 
+.inventory-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.inventory-box {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(248, 250, 252, 0.7);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.App.dark .inventory-box {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.inventory-box.scrollable {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 20px;
+}
+
 .piece-form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -773,6 +900,8 @@ footer.dark {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 360px;
+  overflow-y: auto;
 }
 
 .shape-group-title {
@@ -825,18 +954,24 @@ footer.dark {
   color: #f8fafc;
 }
 
+.shape-preview-wrapper {
+  width: clamp(80px, 18vw, 110px);
+  height: clamp(80px, 18vw, 110px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .shape-preview {
   display: grid;
   gap: 2px;
-  justify-content: center;
-  align-content: center;
 }
 
 .shape-preview-cell {
-  width: 100%;
-  aspect-ratio: 1 / 1;
   border-radius: 4px;
   border: 1px dashed #cbd5f5;
+  width: 100%;
+  height: 100%;
 }
 
 .shape-preview-cell.filled {
@@ -854,13 +989,14 @@ footer.dark {
 }
 
 .piece-hint {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-bottom: 8px;
+  font-size: 14px;
+  color: #334155;
+  margin-bottom: 12px;
+  font-weight: 600;
 }
 
 .App.dark .piece-hint {
-  color: #cbd5f5;
+  color: #e2e8f0;
 }
 
 .modifier-group {
@@ -1036,30 +1172,70 @@ footer.dark {
 }
 
 .solve-progress {
-  margin: 0 auto 24px auto;
+  margin: 0 auto 20px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: fit-content;
-  padding: 10px 16px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #1e3a8a;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
   font-weight: 600;
 }
 
 .App.dark .solve-progress {
-  background: rgba(37, 99, 235, 0.25);
+  background: rgba(148, 163, 184, 0.2);
   color: #bfdbfe;
 }
 
 .solve-spinner {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 2px solid rgba(37, 99, 235, 0.3);
   border-top-color: #2563eb;
   animation: spin 0.8s linear infinite;
+}
+
+.solve-spinner.large {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.solve-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+}
+
+.solve-overlay-card {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 24px 28px;
+  border-radius: 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+}
+
+.solve-overlay-card h3 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+}
+
+.solve-overlay-card p {
+  margin: 0;
+  color: #cbd5f5;
 }
 
 @keyframes spin {
@@ -1071,7 +1247,10 @@ footer.dark {
 .sugar-actions {
   display: flex;
   justify-content: center;
-  margin: 24px 0;
+  align-items: center;
+  margin: 24px 0 12px;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .sugar-actions .primary {
@@ -1083,6 +1262,21 @@ footer.dark {
   color: white;
   font-weight: bold;
   cursor: pointer;
+  min-width: 260px;
+}
+
+.sugar-actions .primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sugar-actions .actions-hint {
+  font-size: 13px;
+  color: #475569;
+}
+
+.App.dark .sugar-actions .actions-hint {
+  color: #cbd5f5;
 }
 
 .solution-card {
