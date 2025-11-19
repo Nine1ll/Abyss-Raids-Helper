@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ROLE_LABELS, ROLE_MODIFIERS, GRADE_INFO } from "../constants/sugar";
 import { SHAPE_OPTIONS } from "../utils/sugar/shapes";
 import { solveSugarBoard } from "../utils/sugar/solver";
+import { ThemeContext } from "../context/ThemeContext";
 
 const DEFAULT_PIECES = [
   {
@@ -83,6 +84,8 @@ const ShapePreview = ({ shape, color = "#475569", cellSize = 16 }) => {
 const formatScore = (value) => value.toLocaleString("ko-KR");
 
 const SugarOptimizer = () => {
+  const { darkMode, toggleDarkMode } = useContext(ThemeContext);
+
   const [blockedCells, setBlockedCells] = useState(() => createInitialBlockedCells());
   const [playerRole, setPlayerRole] = useState("dealer");
   const [pieces, setPieces] = useState(DEFAULT_PIECES);
@@ -168,6 +171,11 @@ const SugarOptimizer = () => {
     });
   };
 
+  const handleResetOpenCells = () => {
+    setBlockedCells(createInitialBlockedCells());
+    setSolution(null);
+  };
+
   const handleNewPieceChange = (field, value) => {
     setNewPiece((prev) => ({ ...prev, [field]: value }));
   };
@@ -196,6 +204,12 @@ const SugarOptimizer = () => {
 
   const handleRemovePiece = (id) => {
     setPieces((prev) => prev.filter((piece) => piece.id !== id));
+    setSolution(null);
+  };
+
+  const handleResetPieces = () => {
+    setPieces([]);
+    pieceIdRef.current = 1;
     setSolution(null);
   };
 
@@ -329,8 +343,13 @@ const SugarOptimizer = () => {
   }, [gradeSelectionInfo?.maxCells]);
 
   return (
-    <div className="sugar-view">
-      <h1>🧊 설탕 유리 배치 도우미</h1>
+    <div className={`sugar-view ${darkMode ? "dark" : ""}`}>
+      <div className="sugar-toolbar">
+        <h1>🧊 설탕 유리 배치 도우미</h1>
+        <button type="button" className="ghost" onClick={toggleDarkMode}>
+          {darkMode ? "☀️ 라이트 모드" : "🌙 다크 모드"}
+        </button>
+      </div>
       <p className="sugar-subtitle">
         빈칸 사진과 조각 사진을 업로드한 뒤, 격자를 직접 표시하고 보유 중인 조각을
         입력하면 가장 높은 균열 저항력을 계산합니다.
@@ -364,10 +383,14 @@ const SugarOptimizer = () => {
             </div>
           </div>
 
-          <p className="board-hint">
-            중앙 3×5칸만 열린 상태로 시작합니다. 잠긴 칸(🔒)을 다시 누르면 열리고, 열린 칸을
-            다시 누르면 잠글 수 있습니다.
-          </p>
+          <div className="board-hint-row">
+            <p className="board-hint">
+              잠긴 칸(🔒)을 다시 누르면 열리고, 열린 칸을 다시 누르면 잠글 수 있습니다.
+            </p>
+            <button type="button" className="ghost small" onClick={handleResetOpenCells}>
+              열린 칸 초기화
+            </button>
+          </div>
 
           <div className="sugar-grid-frame">
             <div
@@ -403,7 +426,12 @@ const SugarOptimizer = () => {
         </section>
 
         <section className="sugar-card inventory-card">
-          <div className="sugar-section-title">2. 보유 중인 설탕 유리조각</div>
+          <div className="sugar-section-title inventory-title-row">
+            <span>2. 보유 중인 설탕 유리조각</span>
+            <button type="button" className="ghost small" onClick={handleResetPieces}>
+              보유 조각 초기화
+            </button>
+          </div>
           <div className="inventory-panels">
             <div className="inventory-box scrollable">
               <div className="piece-form">
@@ -473,7 +501,7 @@ const SugarOptimizer = () => {
                     <div>
                       전체 조각 미리보기 <span className="piece-tray-count">({playerPieces.length}개)</span>
                     </div>
-                    <span>드래그하여 더 보기</span>
+                    <span>스크롤하여 더 보기</span>
                   </div>
                   <div className="piece-tray-scroll">
                     {playerPieces.map((piece) => {
@@ -507,37 +535,39 @@ const SugarOptimizer = () => {
                 <p className="empty-text">추가된 조각이 없습니다.</p>
               )}
 
-              {groupedPieces.map((group) => (
-                <div key={group.modifier} className="modifier-group">
-                  <div className="modifier-group-header">
-                    <span>{group.modifier}</span>
-                    <span>{group.pieces.length}개</span>
-                  </div>
-                  <div className="piece-gallery">
-                    {group.pieces.map((piece) => {
-                      const info = GRADE_INFO[piece.grade];
-                      const shape = shapeLookup.get(piece.shapeKey);
-                      return (
-                        <div key={piece.id} className="piece-card compact">
-                          <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={14} />
-                          <div className="piece-card-body">
-                            <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
-                              {info?.label}
+              <div className="modifier-groups-row">
+                {groupedPieces.map((group) => (
+                  <div key={group.modifier} className="modifier-group">
+                    <div className="modifier-group-header">
+                      <span>{group.modifier}</span>
+                      <span>{group.pieces.length}개</span>
+                    </div>
+                    <div className="piece-gallery">
+                      {group.pieces.map((piece) => {
+                        const info = GRADE_INFO[piece.grade];
+                        const shape = shapeLookup.get(piece.shapeKey);
+                        return (
+                          <div key={piece.id} className="piece-card compact">
+                            <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={14} />
+                            <div className="piece-card-body">
+                              <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
+                                {info?.label}
+                              </div>
+                              <div className="piece-card-details">
+                                <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
+                                <span className="piece-card-modifier">{piece.modifier}</span>
+                              </div>
                             </div>
-                            <div className="piece-card-details">
-                              <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
-                              <span className="piece-card-modifier">{piece.modifier}</span>
-                            </div>
+                            <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
+                              삭제
+                            </button>
                           </div>
-                          <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
-                            삭제
-                          </button>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </section>

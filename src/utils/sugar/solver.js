@@ -8,18 +8,57 @@ const clonePlacements = (placements) =>
     cells: p.cells.map(([r, c]) => [r, c]),
   }));
 
+const bitForCell = (row, col, cols) => 1n << BigInt(row * cols + col);
+
 export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role }) => {
-  const boardSize = rows * cols;
-  const board = new Array(boardSize).fill(null);
+  const totalCells = rows * cols;
+  let blockedMask = 0n;
+  const blockedKeySet = new Set();
 
   blocked.forEach(({ row, col }) => {
     if (row >= 0 && row < rows && col >= 0 && col < cols) {
-      const idx = row * cols + col;
-      board[idx] = "#";
+      blockedMask |= bitForCell(row, col, cols);
+      blockedKeySet.add(`${row},${col}`);
     }
   });
 
-  let totalFreeCells = board.filter((cell) => cell !== "#").length;
+  const totalFreeCells = totalCells - blockedKeySet.size;
+
+  const placementsCache = new Map();
+  const getPlacementsForShape = (shape) => {
+    if (placementsCache.has(shape.key)) {
+      return placementsCache.get(shape.key);
+    }
+
+    const placements = [];
+    for (let startRow = 0; startRow <= rows - shape.height; startRow += 1) {
+      for (let startCol = 0; startCol <= cols - shape.width; startCol += 1) {
+        let mask = 0n;
+        const coords = [];
+        let fits = true;
+
+        for (let i = 0; i < shape.cells.length; i += 1) {
+          const cell = shape.cells[i];
+          const row = startRow + cell.row;
+          const col = startCol + cell.col;
+          const bit = bitForCell(row, col, cols);
+          if ((blockedMask & bit) !== 0n) {
+            fits = false;
+            break;
+          }
+          mask |= bit;
+          coords.push([row, col]);
+        }
+
+        if (fits) {
+          placements.push({ mask, cells: coords });
+        }
+      }
+    }
+
+    placementsCache.set(shape.key, placements);
+    return placements;
+  };
 
   const expandedPieces = [];
   pieces.forEach((piece) => {
@@ -29,6 +68,8 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     const gradeInfo = GRADE_INFO[piece.grade];
     const maxCells = gradeInfo?.maxCells;
     if (maxCells && shape.area > maxCells) return;
+    const placements = getPlacementsForShape(shape);
+    if (!placements.length) return;
     const quantity = Number(piece.quantity) || 0;
     for (let i = 0; i < quantity; i += 1) {
       expandedPieces.push({
@@ -38,6 +79,7 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
         area: shape.area,
         baseScore: getPieceBaseScore(piece.grade, shape.area),
         gradeLabel: gradeInfo?.label || piece.grade,
+        placements,
       });
     }
   });
@@ -54,6 +96,11 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
 
   expandedPieces.sort((a, b) => b.baseScore - a.baseScore || b.area - a.area);
 
+  const suffixBase = new Array(expandedPieces.length + 1).fill(0);
+  for (let i = expandedPieces.length - 1; i >= 0; i -= 1) {
+    suffixBase[i] = suffixBase[i + 1] + expandedPieces[i].baseScore;
+  }
+
   let bestResult = {
     totalScore: 0,
     baseScore: 0,
@@ -62,44 +109,8 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     bonusBreakdown: [],
   };
 
-  const placements = [];
+  const placementsStack = [];
   const modifierTotals = {};
-
-  const canPlace = (piece, startRow, startCol) => {
-    if (startRow + piece.shape.height > rows) return false;
-    if (startCol + piece.shape.width > cols) return false;
-
-    for (let i = 0; i < piece.shape.cells.length; i += 1) {
-      const cell = piece.shape.cells[i];
-      const r = startRow + cell.row;
-      const c = startCol + cell.col;
-      const idx = r * cols + c;
-      if (board[idx] !== null) {
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const placePiece = (piece, startRow, startCol) => {
-    const coords = [];
-    piece.shape.cells.forEach(({ row, col }) => {
-      const r = startRow + row;
-      const c = startCol + col;
-      const idx = r * cols + c;
-      board[idx] = piece.uid;
-      coords.push([r, c]);
-    });
-    return coords;
-  };
-
-  const removePiece = (coords) => {
-    coords.forEach(([row, col]) => {
-      const idx = row * cols + col;
-      board[idx] = null;
-    });
-  };
 
   const evaluate = (baseScore) => {
     const { totalBonus, breakdown } = summarizeBonuses(modifierTotals);
@@ -109,57 +120,66 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
         totalScore,
         baseScore,
         bonusScore: totalBonus,
-        placements: clonePlacements(placements),
+        placements: clonePlacements(placementsStack),
         bonusBreakdown: breakdown,
       };
     }
   };
 
-  const dfs = (index, baseScore, remainingFree) => {
+  const dfs = (index, baseScore, remainingFree, occupiedMask) => {
     if (index === expandedPieces.length) {
       evaluate(baseScore);
       return;
     }
 
-    // Option: skip this piece entirely
-    dfs(index + 1, baseScore, remainingFree);
+    const optimisticBonus = Math.ceil(Math.max(remainingFree, 0) / 3) * 265;
+    if (baseScore + suffixBase[index] + optimisticBonus <= bestResult.totalScore) {
+      return;
+    }
 
     const piece = expandedPieces[index];
+
+    // Skip current piece
+    dfs(index + 1, baseScore, remainingFree, occupiedMask);
+
     if (piece.area > remainingFree) {
       return;
     }
 
-    for (let row = 0; row <= rows - piece.shape.height; row += 1) {
-      for (let col = 0; col <= cols - piece.shape.width; col += 1) {
-        if (!canPlace(piece, row, col)) continue;
-        const coords = placePiece(piece, row, col);
-        placements.push({
-          id: piece.uid,
-          label: `${piece.modifier} · ${piece.gradeLabel} · ${piece.area}칸`,
-          grade: piece.grade,
-          modifier: piece.modifier,
-          baseScore: piece.baseScore,
-          shapeKey: piece.shapeKey,
-          cells: coords,
-        });
+    for (let i = 0; i < piece.placements.length; i += 1) {
+      const placement = piece.placements[i];
+      if ((placement.mask & occupiedMask) !== 0n) continue;
 
-        modifierTotals[piece.modifier] =
-          (modifierTotals[piece.modifier] || 0) + piece.area;
+      placementsStack.push({
+        id: piece.uid,
+        label: `${piece.modifier} · ${piece.gradeLabel} · ${piece.area}칸`,
+        grade: piece.grade,
+        modifier: piece.modifier,
+        baseScore: piece.baseScore,
+        shapeKey: piece.shapeKey,
+        cells: placement.cells,
+      });
 
-        dfs(index + 1, baseScore + piece.baseScore, remainingFree - piece.area);
+      modifierTotals[piece.modifier] =
+        (modifierTotals[piece.modifier] || 0) + piece.area;
 
-        modifierTotals[piece.modifier] -= piece.area;
-        if (modifierTotals[piece.modifier] <= 0) {
-          delete modifierTotals[piece.modifier];
-        }
+      dfs(
+        index + 1,
+        baseScore + piece.baseScore,
+        remainingFree - piece.area,
+        occupiedMask | placement.mask
+      );
 
-        placements.pop();
-        removePiece(coords);
+      modifierTotals[piece.modifier] -= piece.area;
+      if (modifierTotals[piece.modifier] <= 0) {
+        delete modifierTotals[piece.modifier];
       }
+
+      placementsStack.pop();
     }
   };
 
-  dfs(0, 0, totalFreeCells);
+  dfs(0, 0, totalFreeCells, blockedMask);
 
   return bestResult;
 };
