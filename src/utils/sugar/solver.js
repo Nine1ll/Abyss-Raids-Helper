@@ -1,5 +1,6 @@
 import { sugarShapes } from "./shapes";
 import { getPieceBaseScore, summarizeBonuses } from "./score";
+import { GRADE_INFO } from "../../constants/sugar";
 
 const clonePlacements = (placements) =>
   placements.map((p) => ({
@@ -25,6 +26,9 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     if (!piece || piece.role !== role) return;
     const shape = sugarShapes[piece.shapeKey];
     if (!shape) return;
+    const gradeInfo = GRADE_INFO[piece.grade];
+    const maxCells = gradeInfo?.maxCells;
+    if (maxCells && shape.area > maxCells) return;
     const quantity = Number(piece.quantity) || 0;
     for (let i = 0; i < quantity; i += 1) {
       expandedPieces.push({
@@ -33,6 +37,7 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
         shape,
         area: shape.area,
         baseScore: getPieceBaseScore(piece.grade, shape.area),
+        gradeLabel: gradeInfo?.label || piece.grade,
       });
     }
   });
@@ -130,7 +135,7 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
         const coords = placePiece(piece, row, col);
         placements.push({
           id: piece.uid,
-          label: piece.label || piece.name || piece.shapeKey,
+          label: `${piece.modifier} · ${piece.gradeLabel} · ${piece.area}칸`,
           grade: piece.grade,
           modifier: piece.modifier,
           baseScore: piece.baseScore,

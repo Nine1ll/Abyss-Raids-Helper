@@ -6,16 +6,14 @@ import { solveSugarBoard } from "../utils/sugar/solver";
 const DEFAULT_PIECES = [
   {
     id: "sample-1",
-    label: "광휘 네모",
     role: "dealer",
     modifier: "광휘",
     grade: "rare",
-    shapeKey: "4_square",
-    quantity: 2,
+    shapeKey: "3_L_sw",
+    quantity: 1,
   },
   {
     id: "sample-2",
-    label: "관통 T",
     role: "dealer",
     modifier: "관통",
     grade: "epic",
@@ -24,22 +22,47 @@ const DEFAULT_PIECES = [
   },
   {
     id: "sample-3",
-    label: "축복 스네이크",
     role: "supporter",
     modifier: "축복",
     grade: "super_epic",
-    shapeKey: "8_snake_h",
+    shapeKey: "5_plus",
     quantity: 1,
   },
 ];
+
+const BOARD_SIZE = 7;
+const OPEN_ROWS = [2, 3, 4];
+const OPEN_COLS = [1, 2, 3, 4, 5];
+
+const cellKey = (row, col) => `${row},${col}`;
+
+const createInitialBlockedCells = () => {
+  const openRows = new Set(OPEN_ROWS);
+  const openCols = new Set(OPEN_COLS);
+  const initial = new Set();
+  for (let row = 0; row < BOARD_SIZE; row += 1) {
+    for (let col = 0; col < BOARD_SIZE; col += 1) {
+      if (!openRows.has(row) || !openCols.has(col)) {
+        initial.add(cellKey(row, col));
+      }
+    }
+  }
+  return initial;
+};
 
 const gradeEntries = Object.entries(GRADE_INFO);
 const shapeEntries = SHAPE_OPTIONS;
 
 const ShapePreview = ({ shape, color = "#475569" }) => {
   if (!shape) return null;
+  const maxDimension = Math.max(shape.width, shape.height);
+  const trackSize = `${100 / maxDimension}%`;
+  const previewStyle = {
+    gridTemplateColumns: `repeat(${shape.width}, ${trackSize})`,
+    gridTemplateRows: `repeat(${shape.height}, ${trackSize})`,
+  };
   return (
-    <div className="shape-preview" style={{ gridTemplateColumns: `repeat(${shape.width}, 1fr)` }}>
+    <div className="shape-preview" style={previewStyle}>
       {shape.matrix.map((row, rowIndex) =>
         row.map((value, colIndex) => (
           <span
@@ -53,13 +76,10 @@ const ShapePreview = ({ shape, color = "#475569" }) => {
   );
 };
 
-const cellKey = (row, col) => `${row},${col}`;
 const formatScore = (value) => value.toLocaleString("ko-KR");
 
 const SugarOptimizer = () => {
-  const [boardRows, setBoardRows] = useState(6);
-  const [boardCols, setBoardCols] = useState(6);
-  const [blockedCells, setBlockedCells] = useState(() => new Set());
+  const [blockedCells, setBlockedCells] = useState(() => createInitialBlockedCells());
   const [playerRole, setPlayerRole] = useState("dealer");
   const [pieces, setPieces] = useState(DEFAULT_PIECES);
   const [boardImage, setBoardImage] = useState(null);
@@ -69,40 +89,20 @@ const SugarOptimizer = () => {
 
   const pieceIdRef = useRef(DEFAULT_PIECES.length + 1);
 
-  const createNewPieceState = (role) => ({
-    label: "",
-    role,
-    modifier: ROLE_MODIFIERS[role]?.[0] || "",
+  const [newPiece, setNewPiece] = useState(() => ({
+    modifier: ROLE_MODIFIERS.dealer?.[0] || "",
     grade: "rare",
-    shapeKey: shapeEntries[0]?.key,
-    quantity: 1,
-  });
-
-  const [newPiece, setNewPiece] = useState(() => createNewPieceState("dealer"));
+  }));
 
   useEffect(() => {
     setNewPiece((prev) => {
       const modifiers = ROLE_MODIFIERS[playerRole] || [];
       return {
         ...prev,
-        role: playerRole,
         modifier: modifiers.includes(prev.modifier) ? prev.modifier : modifiers[0] || "",
       };
     });
   }, [playerRole]);
-
-  useEffect(() => {
-    setBlockedCells((prev) => {
-      const next = new Set();
-      prev.forEach((key) => {
-        const [row, col] = key.split(",").map(Number);
-        if (row < boardRows && col < boardCols) {
-          next.add(key);
-        }
-      });
-      return next;
-    });
-  }, [boardRows, boardCols]);
 
   const highlightMap = useMemo(() => {
     if (!solution) return new Map();
@@ -145,16 +145,6 @@ const SugarOptimizer = () => {
     });
   };
 
-  const updateRows = (value) => {
-    setBoardRows(value);
-    setSolution(null);
-  };
-
-  const updateCols = (value) => {
-    setBoardCols(value);
-    setSolution(null);
-  };
-
   const updateRole = (value) => {
     setPlayerRole(value);
     setSolution(null);
@@ -178,20 +168,26 @@ const SugarOptimizer = () => {
     setNewPiece((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleAddPiece = (event) => {
-    event.preventDefault();
-    if (!newPiece.modifier) return;
-    const quantity = Math.max(1, Number(newPiece.quantity) || 1);
+  const handleAddShape = (shapeKey) => {
+    const modifier = newPiece.modifier;
+    const grade = newPiece.grade;
+    if (!modifier || !grade) return;
+    const gradeInfo = GRADE_INFO[grade];
+    const shape = shapeEntries.find((entry) => entry.key === shapeKey);
+    if (!shape) return;
+    if (gradeInfo?.maxCells && shape.area > gradeInfo.maxCells) return;
+
     const piece = {
-      ...newPiece,
-      role: playerRole,
       id: `piece-${pieceIdRef.current}`,
-      quantity,
+      role: playerRole,
+      modifier,
+      grade,
+      shapeKey,
+      quantity: 1,
     };
     pieceIdRef.current += 1;
     setPieces((prev) => [...prev, piece]);
     setSolution(null);
-    setNewPiece((prev) => ({ ...prev, label: "", quantity: 1 }));
   };
 
   const handleRemovePiece = (id) => {
@@ -213,8 +209,8 @@ const SugarOptimizer = () => {
       }));
 
       const result = solveSugarBoard({
-        rows: boardRows,
-        cols: boardCols,
+        rows: BOARD_SIZE,
+        cols: BOARD_SIZE,
         blocked,
         pieces: normalizedPieces,
         role: playerRole,
@@ -231,6 +227,7 @@ const SugarOptimizer = () => {
     const blocked = blockedCells.has(key);
     const highlight = highlightMap.get(key);
     const gradeColor = highlight ? GRADE_INFO[highlight.grade]?.color : null;
+    const cellContent = highlight ? highlight.order : blocked ? "🔒" : "";
     return (
       <button
         key={key}
@@ -238,8 +235,15 @@ const SugarOptimizer = () => {
         className={`sugar-cell ${blocked ? "blocked" : ""} ${highlight ? "filled" : ""}`}
         style={{ backgroundColor: gradeColor || undefined }}
         onClick={() => toggleCell(row, col)}
+        aria-label={
+          blocked
+            ? "잠긴 칸"
+            : highlight
+            ? `${highlight.label} (${highlight.order}번)`
+            : "빈 칸"
+        }
       >
-        {highlight ? highlight.order : ""}
+        {cellContent}
       </button>
     );
   };
@@ -250,10 +254,75 @@ const SugarOptimizer = () => {
     shapeEntries.forEach((shape) => map.set(shape.key, shape));
     return map;
   }, []);
+  const gradeOrder = useMemo(() => {
+    const order = new Map();
+    gradeEntries.forEach(([grade], index) => {
+      order.set(grade, index);
+    });
+    return order;
+  }, []);
   const playerPieces = useMemo(
     () => pieces.filter((piece) => piece.role === playerRole),
     [pieces, playerRole]
   );
+  const modifierOrder = useMemo(() => {
+    const map = new Map();
+    modifiersForRole.forEach((modifier, index) => {
+      map.set(modifier, index);
+    });
+    return map;
+  }, [modifiersForRole]);
+
+  const groupedPieces = useMemo(() => {
+    const groups = new Map();
+    playerPieces.forEach((piece) => {
+      const key = piece.modifier || "기타";
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key).push(piece);
+    });
+
+    const sorted = Array.from(groups.entries()).sort(([a], [b]) => {
+      const aOrder = modifierOrder.has(a) ? modifierOrder.get(a) : Number.MAX_SAFE_INTEGER;
+      const bOrder = modifierOrder.has(b) ? modifierOrder.get(b) : Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.localeCompare(b, "ko-KR");
+    });
+
+    return sorted.map(([modifier, list]) => ({
+      modifier,
+      pieces: list.sort((pieceA, pieceB) => {
+        const gradeDiff =
+          (gradeOrder.get(pieceA.grade) ?? Number.MAX_SAFE_INTEGER) -
+          (gradeOrder.get(pieceB.grade) ?? Number.MAX_SAFE_INTEGER);
+        if (gradeDiff !== 0) return gradeDiff;
+        const areaA = shapeLookup.get(pieceA.shapeKey)?.area || 0;
+        const areaB = shapeLookup.get(pieceB.shapeKey)?.area || 0;
+        return areaA - areaB;
+      }),
+    }));
+  }, [gradeOrder, modifierOrder, playerPieces, shapeLookup]);
+
+  const gradeSelectionInfo = GRADE_INFO[newPiece.grade];
+  const allowedShapeGroups = useMemo(() => {
+    const limit = gradeSelectionInfo?.maxCells;
+    const groups = new Map();
+    shapeEntries.forEach((shape) => {
+      if (limit && shape.area > limit) return;
+      if (!groups.has(shape.area)) {
+        groups.set(shape.area, []);
+      }
+      groups.get(shape.area).push(shape);
+    });
+
+    return Array.from(groups.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([area, shapes]) => ({
+        area,
+        shapes: shapes.sort((a, b) => a.key.localeCompare(b.key)),
+      }));
+  }, [gradeSelectionInfo?.maxCells]);
 
   return (
     <div className="sugar-view">
@@ -268,30 +337,6 @@ const SugarOptimizer = () => {
           <div className="sugar-section-title">1. 보드 설정</div>
           <div className="board-settings">
             <label>
-              행
-              <input
-                type="number"
-                min="3"
-                max="10"
-                value={boardRows}
-                onChange={(e) =>
-                  updateRows(Math.max(3, Math.min(10, Number(e.target.value) || 3)))
-                }
-              />
-            </label>
-            <label>
-              열
-              <input
-                type="number"
-                min="3"
-                max="10"
-                value={boardCols}
-                onChange={(e) =>
-                  updateCols(Math.max(3, Math.min(10, Number(e.target.value) || 3)))
-                }
-              />
-            </label>
-            <label>
               직업
               <select value={playerRole} onChange={(e) => updateRole(e.target.value)}>
                 {Object.entries(ROLE_LABELS).map(([value, label]) => (
@@ -303,10 +348,23 @@ const SugarOptimizer = () => {
             </label>
           </div>
 
-          <div className="sugar-grid" style={{ gridTemplateColumns: `repeat(${boardCols}, 1fr)` }}>
-            {Array.from({ length: boardRows }).map((_, row) =>
-              Array.from({ length: boardCols }).map((__, col) => renderCell(row, col))
-            )}
+          <p className="board-hint">
+            처음에는 중앙 3×5 칸만 열려 있습니다. 잠긴 칸을 클릭하면 🔒 표시가 사라지며,
+            다시 클릭하면 잠글 수 있습니다.
+          </p>
+
+          <div className="sugar-grid-frame">
+            <div
+              className="sugar-grid"
+              style={{
+                gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)`,
+                gridTemplateRows: `repeat(${BOARD_SIZE}, 1fr)`,
+              }}
+            >
+              {Array.from({ length: BOARD_SIZE }).map((_, row) =>
+                Array.from({ length: BOARD_SIZE }).map((__, col) => renderCell(row, col))
+              )}
+            </div>
           </div>
 
           <div className="image-uploaders">
@@ -329,17 +387,8 @@ const SugarOptimizer = () => {
 
         <section className="sugar-card">
           <div className="sugar-section-title">2. 보유 중인 설탕 유리조각</div>
-          <form className="piece-form" onSubmit={handleAddPiece}>
-            <div className="piece-form-row">
-              <label>
-                이름
-                <input
-                  type="text"
-                  placeholder="조각 이름"
-                  value={newPiece.label}
-                  onChange={(e) => handleNewPieceChange("label", e.target.value)}
-                />
-              </label>
+          <div className="piece-form">
+            <div className="piece-form-row compact">
               <label>
                 수식어 ({ROLE_LABELS[playerRole]})
                 <select
@@ -363,68 +412,76 @@ const SugarOptimizer = () => {
                   ))}
                 </select>
               </label>
-              <label>
-                수량
-                <input
-                  type="number"
-                  min="1"
-                  max="6"
-                  value={newPiece.quantity}
-                  onChange={(e) => handleNewPieceChange("quantity", Number(e.target.value) || 1)}
-                />
-              </label>
             </div>
-
-            <div className="shape-picker" role="radiogroup" aria-label="조각 모양 선택">
-              {shapeEntries.map((shape) => (
-                <button
-                  key={shape.key}
-                  type="button"
-                  className={`shape-option ${newPiece.shapeKey === shape.key ? "selected" : ""}`}
-                  onClick={() => handleNewPieceChange("shapeKey", shape.key)}
-                  aria-pressed={newPiece.shapeKey === shape.key}
-                >
-                  <ShapePreview shape={shape} color={GRADE_INFO[newPiece.grade]?.color} />
-                  <span>{shape.area}칸</span>
-                </button>
+            <p className="piece-hint">
+              선택한 등급은 최대 {gradeSelectionInfo?.maxCells || "무제한"}칸 조각까지 추가할 수 있습니다.
+              아래 모양을 클릭하면 즉시 보유 목록에 더해집니다.
+            </p>
+            <div className="shape-groups">
+              {allowedShapeGroups.length === 0 && (
+                <p className="empty-text">선택한 등급에서 사용할 수 있는 모양이 없습니다.</p>
+              )}
+              {allowedShapeGroups.map((group) => (
+                <div key={group.area} className="shape-group">
+                  <div className="shape-group-title">{group.area}칸 조각</div>
+                  <div className="shape-group-grid">
+                    {group.shapes.map((shape) => (
+                      <button
+                        key={shape.key}
+                        type="button"
+                        className="shape-option add"
+                        onClick={() => handleAddShape(shape.key)}
+                        aria-label={`${group.area}칸 모양 추가`}
+                      >
+                        <ShapePreview shape={shape} color={GRADE_INFO[newPiece.grade]?.color} />
+                        <span className="shape-area-label">+{group.area}칸</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
-
-            <button type="submit" className="primary small">
-              현재 직업 조각 추가
-            </button>
-          </form>
+          </div>
 
           <p className="piece-hint">{ROLE_LABELS[playerRole]} 전용 조각만 표시되고 추가됩니다.</p>
 
-          <div className="piece-gallery">
-            {playerPieces.length === 0 && <p className="empty-text">추가된 조각이 없습니다.</p>}
-            {playerPieces.map((piece) => {
-              const info = GRADE_INFO[piece.grade];
-              const shape = shapeLookup.get(piece.shapeKey);
-              return (
-                <div key={piece.id} className="piece-card">
-                  <div className="piece-card-header" style={{ backgroundColor: info?.color || "#475569" }}>
-                    <span>{piece.modifier}</span>
-                    <span>{info?.label}</span>
-                  </div>
-                  <div className="piece-card-body">
-                    <ShapePreview shape={shape} color={info?.color || "#475569"} />
-                    <div className="piece-card-meta">
-                      <div className="piece-card-label">{piece.label || shape?.key}</div>
-                      <div className="piece-card-details">
+          {groupedPieces.length === 0 && <p className="empty-text">추가된 조각이 없습니다.</p>}
+          {groupedPieces.map((group) => (
+            <div key={group.modifier} className="modifier-group">
+              <div className="modifier-group-header">
+                <span>{group.modifier}</span>
+                <span>{group.pieces.length}개</span>
+              </div>
+              <div className="piece-gallery">
+                {group.pieces.map((piece) => {
+                  const info = GRADE_INFO[piece.grade];
+                  const shape = shapeLookup.get(piece.shapeKey);
+                  return (
+                    <div key={piece.id} className="piece-card">
+                      <div
+                        className="piece-card-header"
+                        style={{ backgroundColor: info?.color || "#475569" }}
+                      >
+                        <span>{info?.label}</span>
                         <span>{shape?.area ?? "?"}칸</span>
-                        <span>x{piece.quantity}</span>
                       </div>
+                      <div className="piece-card-body">
+                        <ShapePreview shape={shape} color={info?.color || "#475569"} />
+                        <div className="piece-card-meta">
+                          <div className="piece-card-details">
+                            <span>보유 x{piece.quantity || 1}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
+                        삭제
+                      </button>
                     </div>
-                  </div>
-                  <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
-                    삭제
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </section>
       </div>
 
