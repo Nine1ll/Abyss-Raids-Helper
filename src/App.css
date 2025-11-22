@@ -734,18 +734,6 @@ button.ghost.small {
   font-weight: 600;
 }
 
-.board-hint-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.board-hint-actions {
-  display: flex;
-  gap: 8px;
-}
-
 .role-selector {
   width: 100%;
 }
@@ -864,51 +852,33 @@ button.ghost.small {
 }
 
 .sugar-cell {
-  position: relative;
+  border: 1px dashed #cbd5f5;
   border-radius: 6px;
   background: #f8fafc;
-  border: none;  /* 테두리 제거 */
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
-/* 조각이 없을 때만 dashed */
-.sugar-cell:not(.filled):not(.blocked) {
-  border: 1px dashed #cbd5f5;
-}
-
-
-/* highlightMap이 없는 기본 빈칸 */
-.sugar-cell:not(.filled):not(.blocked) {
-  border: 1px dashed #cbd5f5;
-}
-
-/* 잠긴 칸 */
 .sugar-cell.blocked {
   background: #94a3b8;
-  border: 1px solid #64748b;
+  border-color: #64748b;
   color: white;
   font-size: 18px;
 }
 
-/* 조각 들어간 칸 */
 .sugar-cell.filled {
   color: white;
+  border-color: transparent;
 }
 
 .sugar-cell:hover {
   transform: scale(1.03);
-}
-
-.cell-badge {
-  position: absolute;
-  right: 2px;
-  bottom: 2px;
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: white;
-  background: rgba(0, 0, 0, 0.7);
-  pointer-events: none;
 }
 
 .board-hint {
@@ -1471,6 +1441,53 @@ button.ghost.small {
   margin-top: 16px;
 }
 
+.method-comparison {
+  margin-top: 16px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.method-comparison ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.method-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--panel-subtle);
+  border-radius: 10px;
+}
+
+.method-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.method-time {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.method-score {
+  font-weight: 700;
+}
+
+.method-note {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
 .solution-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -1547,270 +1564,3 @@ button.ghost.small {
 .App.dark .sugar-cell.blocked {
   background: #475569;
 }
-
-/* =========================
-   header-banner
-========================= */
-
-.header-banner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  background-color: #111827;
-  border-bottom: 1px solid #374151;
-}
-
-.header-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.header-btn {
-  padding: 10px 20px;
-  border-radius: 20px;
-  border: 2px solid #fbbf24;
-  background-color: transparent;
-  color: #fbbf24;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.header-btn.active {
-  background-color: #fbbf24;
-  color: #111827;
-}
-
-/* =========================
-   sugar-view
-========================= */
-
-.sugar-title {
-  font-size: 28px;
-  color: #fbbf24;
-  text-shadow: 0 0 5px rgba(251, 191, 36, 0.5);
-  margin: 20px 0;
-  text-align: center;
-}
-
-.sugar-subtitle {
-  text-align: center;
-  margin: 10px 0;
-  font-weight: bold;
-  opacity: 0.9;
-}
-
-/* =========================
-   theme-toggle-right
-========================= */
-
-.theme-toggle-right {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.theme-toggle {
-  display: flex;
-  gap: 8px;
-}
-
-.theme-chip {
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1px solid #4b5563;
-  background-color: #374151;
-  color: #ffffff;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.theme-chip.active {
-  background-color: #fbbf24;
-  color: #111827;
-  border-color: #fbbf24;
-}
-
-/* =========================
-   header-buttons-center
-========================= */
-
-.header-buttons-center {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin: 20px 0;
-  width: 100%; /* ✅ 부모 요소의 너비를 꽉 채우도록 */
-}
-
-.header-btn {
-  padding: 10px 20px;
-  border-radius: 30px;
-  border: 2px solid #fbbf24;
-  background-color: transparent;
-  color: #fbbf24;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: bold;   /* ← 굵게 */
-}
-
-.header-btn.active {
-  background-color: #fbbf24;
-  color: #111827;
-}
-
-/* =========================
-   초기화 버튼 위치 조정
-========================= */
-
-.reset-btn {
-  background: #e56c2d;
-  color: white;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.App.dark .reset-btn {
-  background: #f59e0b;
-  color: black;
-}
-
-/* =========================
-   mode-selector 위치 조정
-========================= */
-
-.mode-selector {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.mode-selector label {
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.mode-selector select {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 2px solid #e56c2d;
-  background: white;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.App.dark .mode-selector select {
-  background: #1e293b;
-  color: white;
-}
-
-/* =========================
-   header-controls 위치 조정
-========================= */
-
-.header-controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.header-controls .mode-selector {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-controls .theme-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.header-controls .reset-btn {
-  background: #e56c2d;
-  color: white;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.App.dark .header-controls .reset-btn {
-  background: #f59e0b;
-  color: black;
-}
-
-/* =========================
-   전체적인 정리
-========================= */
-
-/* 모든 요소의 기본 스타일을 정리 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: "Noto Sans KR", sans-serif;
-  line-height: 1.6;
-}
-
-button {
-  cursor: pointer;
-}
-
-input,
-select,
-textarea {
-  font-family: inherit;
-  font-size: 100%;
-}
-
-/* =========================
-   미디어 쿼리
-========================= */
-
-@media (max-width: 768px) {
-  .header-buttons {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header-btn {
-    width: 100%;
-    text-align: center;
-  }
-
-  .header-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .mode-selector {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .theme-buttons {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .reset-btn {
-    width: 100%;
-    text-align: center;
-  }
-}
-

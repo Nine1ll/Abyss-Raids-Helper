@@ -1,7 +1,9 @@
-// src/utils/sugar/solver.js
-
 import { sugarShapes } from "./shapes";
-import { getPieceBaseScore, summarizeBonuses, getBonusFromModifier } from "./score";
+import {
+  getPieceBaseScore,
+  summarizeBonuses,
+  getBonusFromModifier,
+} from "./score";
 import { GRADE_INFO } from "../../constants/sugar";
 
 const clonePlacements = (placements) =>
@@ -20,10 +22,19 @@ const createEmptyResult = () => ({
   bonusBreakdown: [],
 });
 
-export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role }) => {
+const createMethodResult = (label) => ({
+  key: label,
+  label,
+  result: createEmptyResult(),
+  durationMs: 0,
+});
+
+const toPlacementLabel = (entry) => `${entry.modifier} · ${entry.gradeLabel} · ${entry.area}칸`;
+
+const buildContext = ({ rows, cols, blocked, pieces, role }) => {
   const totalCells = rows * cols;
   if (totalCells <= 0) {
-    return createEmptyResult();
+    return null;
   }
 
   const bitCache = Array.from({ length: rows }, (_, row) =>
@@ -34,7 +45,6 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
   const cellBits = [];
   const bitToIndex = new Map();
   let boardMask = 0n;
-
   let blockedMask = 0n;
 
   for (let row = 0; row < rows; row += 1) {
@@ -93,19 +103,13 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     return placements;
   };
 
-  // -----------------------------
-  // Piece pool 구성
-  // -----------------------------
   const piecePool = [];
   pieces.forEach((piece, pieceIndex) => {
     if (!piece || piece.role !== role) return;
-
     const quantity = Math.max(0, Number(piece.quantity) || 0);
     if (quantity <= 0) return;
-
     const shape = sugarShapes[piece.shapeKey];
     if (!shape) return;
-
     const gradeInfo = GRADE_INFO[piece.grade];
     const maxCells = gradeInfo?.maxCells;
     if (maxCells && shape.area > maxCells) return;
@@ -113,16 +117,10 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     const placements = getPlacementsForShape(shape);
     if (!placements.length) return;
 
-    const isUnique = piece.grade === "unique";
-
-    // ✅ 유니크는 최대 1개만 사용 가능
-    const effectiveQuantity = isUnique ? Math.min(quantity, 1) : quantity;
-
     const baseScore = getPieceBaseScore(piece.grade, shape.area);
     const entry = {
       uid: piece.id || `${piece.shapeKey}-${pieceIndex}`,
-      // ✅ 유니크는 수식어가 없으므로 "-"로 고정(표시용)
-      modifier: isUnique ? "-" : piece.modifier,
+      modifier: piece.modifier,
       grade: piece.grade,
       gradeLabel: gradeInfo?.label || piece.grade,
       shapeKey: piece.shapeKey,
@@ -130,10 +128,8 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
       baseScore,
       placements,
       placementsByCell: new Map(),
-      remaining: effectiveQuantity,
+      remaining: quantity,
       used: 0,
-      // ✅ 유니크 여부 플래그
-      isUnique,
     };
 
     placements.forEach((placement) => {
@@ -149,12 +145,9 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
   });
 
   if (!piecePool.length) {
-    return createEmptyResult();
+    return null;
   }
 
-  // -----------------------------
-  // 각 칸에 얹을 수 있는 경우의 수(coverage) 계산
-  // -----------------------------
   const coverageCounts = new Array(totalCells).fill(0);
   piecePool.forEach((entry) => {
     entry.placements.forEach((placement) => {
@@ -164,45 +157,65 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
     });
   });
 
-  // -----------------------------
-  // 수식어 보너스 잠재력 및 초기 base score 합계
-  // (유니크는 수식어가 없으므로 제외)
-  // -----------------------------
   const modifierPotential = {};
   let unusedBaseScore = 0;
   piecePool.forEach((entry) => {
     unusedBaseScore += entry.baseScore * entry.remaining;
-    if (!entry.isUnique) {
-      modifierPotential[entry.modifier] =
-        (modifierPotential[entry.modifier] || 0) + entry.area * entry.remaining;
-    }
+    modifierPotential[entry.modifier] =
+      (modifierPotential[entry.modifier] || 0) + entry.area * entry.remaining;
   });
 
-  // 큰 모양, 점수 높은 것 우선 탐색
   piecePool.sort((a, b) => {
     if (b.area !== a.area) return b.area - a.area;
     if (b.baseScore !== a.baseScore) return b.baseScore - a.baseScore;
     return a.modifier.localeCompare(b.modifier, "ko-KR");
   });
 
-  const modifierTotals = {}; // 실제 배치된 수식어별 칸 수
+  return {
+    rows,
+    cols,
+    boardMask,
+    blockedMask,
+    cellBits,
+    bitToIndex,
+    coverageCounts,
+    modifierPotential,
+    unusedBaseScore,
+    piecePool,
+    totalCells,
+  };
+};
+
+const evaluateStack = (placementsStack, baseScore, modifierTotals) => {
+  const { totalBonus, breakdown } = summarizeBonuses(modifierTotals);
+  return {
+    totalScore: baseScore + totalBonus,
+    baseScore,
+    bonusScore: totalBonus,
+    placements: clonePlacements(placementsStack),
+    bonusBreakdown: breakdown,
+  };
+};
+
+const runBacktracking = (context, timeLimitMs) => {
+  const start = performance.now();
+  const deadline = start + timeLimitMs;
+  const {
+    boardMask,
+    blockedMask,
+    cellBits,
+    bitToIndex,
+    coverageCounts,
+    modifierPotential,
+    piecePool,
+    totalCells,
+    unusedBaseScore,
+  } = context;
+
+  const modifierTotals = {};
   const placementsStack = [];
   let bestResult = createEmptyResult();
   const visitedStates = new Map();
-
-  const evaluate = (baseScore) => {
-    const { totalBonus, breakdown } = summarizeBonuses(modifierTotals);
-    const totalScore = baseScore + totalBonus;
-    if (totalScore > bestResult.totalScore) {
-      bestResult = {
-        totalScore,
-        baseScore,
-        bonusScore: totalBonus,
-        placements: clonePlacements(placementsStack),
-        bonusBreakdown: breakdown,
-      };
-    }
-  };
 
   const futureBonusBound = () => {
     let optimistic = 0;
@@ -224,7 +237,6 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
       if ((freeMask & bit) === 0n) continue;
       const score = coverageCounts[index];
       if (score === 0) {
-        // 아무 조각도 못 올리는 칸이면 그냥 여기부터 메우기
         return bit;
       }
       if (score < bestScore) {
@@ -233,30 +245,28 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
         if (score === 1) break;
       }
     }
-    // 그래도 못 찾으면 freeMask 중 가장 낮은 비트
     return bestBit || (freeMask & -freeMask);
   };
 
-  // ------------------------------------
-  // DFS
-  // uniqueUsed: 지금까지 유니크를 몇 개 썼는지 (0 또는 1)
-  // ------------------------------------
-  const dfs = (occupiedMask, baseScore, unusedScore, uniqueUsed = 0, depth = 0) => {
+  const dfs = (occupiedMask, baseScore, unusedScore) => {
+    if (performance.now() > deadline) return;
     const optimisticBonus = futureBonusBound();
     const optimisticTotal = baseScore + unusedScore + optimisticBonus;
     if (optimisticTotal <= bestResult.totalScore) {
       return;
     }
 
-    // ✅ 상태키에 uniqueUsed 포함 (유니크 사용 여부까지 상태로 봄)
-    const stateKey = occupiedMask.toString(16) + "|" + uniqueUsed;
+    const stateKey = occupiedMask.toString(16);
     const seenBest = visitedStates.get(stateKey);
     if (typeof seenBest !== "undefined" && optimisticTotal <= seenBest) {
       return;
     }
     visitedStates.set(stateKey, optimisticTotal);
 
-    evaluate(baseScore);
+    const evaluated = evaluateStack(placementsStack, baseScore, modifierTotals);
+    if (evaluated.totalScore > bestResult.totalScore) {
+      bestResult = evaluated;
+    }
 
     const freeMask = boardMask & ~occupiedMask;
     if (freeMask === 0n) {
@@ -270,20 +280,13 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
 
     const targetIndex = bitToIndex.get(targetBit);
     if (typeof targetIndex === "undefined") {
-      dfs(occupiedMask | targetBit, baseScore, unusedScore, uniqueUsed, depth + 1);
+      dfs(occupiedMask | targetBit, baseScore, unusedScore);
       return;
     }
 
-    // ------------------------------------
-    // Option 1: targetIndex를 포함하는 조각들을 시도
-    // ------------------------------------
     for (let entryIndex = 0; entryIndex < piecePool.length; entryIndex += 1) {
       const entry = piecePool[entryIndex];
       if (entry.remaining <= 0) continue;
-
-      // ✅ 유니크는 전역적으로 최대 1개만 허용
-      if (entry.isUnique && uniqueUsed >= 1) continue;
-
       const placementList = entry.placementsByCell.get(targetIndex);
       if (!placementList || !placementList.length) continue;
 
@@ -294,22 +297,15 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
         entry.remaining -= 1;
         const placementId = `${entry.uid}-${entry.used}`;
         entry.used += 1;
-
-        if (!entry.isUnique) {
-          // ✅ 유니크는 수식어/보너스와 무관
-          modifierTotals[entry.modifier] = (modifierTotals[entry.modifier] || 0) + entry.area;
-          modifierPotential[entry.modifier] = Math.max(
-            0,
-            (modifierPotential[entry.modifier] || 0) - entry.area
-          );
-        }
+        modifierTotals[entry.modifier] = (modifierTotals[entry.modifier] || 0) + entry.area;
+        modifierPotential[entry.modifier] = Math.max(
+          0,
+          (modifierPotential[entry.modifier] || 0) - entry.area
+        );
 
         placementsStack.push({
           id: placementId,
-          // ✅ 유니크는 수식어 없이 표기
-          label: entry.isUnique
-            ? `${entry.gradeLabel} · ${entry.area}칸`
-            : `${entry.modifier} · ${entry.gradeLabel} · ${entry.area}칸`,
+          label: toPlacementLabel(entry),
           grade: entry.grade,
           modifier: entry.modifier,
           baseScore: entry.baseScore,
@@ -317,39 +313,353 @@ export const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role })
           cells: placement.cells,
         });
 
-        const nextOccupied = occupiedMask | placement.mask;
-        const nextBase = baseScore + entry.baseScore;
-        const nextUnused = unusedScore - entry.baseScore;
-
-        if (entry.isUnique) {
-          dfs(nextOccupied, nextBase, nextUnused, uniqueUsed + 1, depth + 1);
-        } else {
-          dfs(nextOccupied, nextBase, nextUnused, uniqueUsed, depth + 1);
-        }
+        dfs(occupiedMask | placement.mask, baseScore + entry.baseScore, unusedScore - entry.baseScore);
 
         placementsStack.pop();
-
-        if (!entry.isUnique) {
-          modifierTotals[entry.modifier] -= entry.area;
-          if (modifierTotals[entry.modifier] <= 0) {
-            delete modifierTotals[entry.modifier];
-          }
-          modifierPotential[entry.modifier] =
-            (modifierPotential[entry.modifier] || 0) + entry.area;
+        modifierTotals[entry.modifier] -= entry.area;
+        if (modifierTotals[entry.modifier] <= 0) {
+          delete modifierTotals[entry.modifier];
         }
-
+        modifierPotential[entry.modifier] = (modifierPotential[entry.modifier] || 0) + entry.area;
         entry.used -= 1;
         entry.remaining += 1;
       }
     }
 
-    // ------------------------------------
-    // Option 2: 이 칸은 비워두고 진행
-    // ------------------------------------
-    dfs(occupiedMask | targetBit, baseScore, unusedScore, uniqueUsed, depth + 1);
+    // Option 2: intentionally leave the cell empty.
+    dfs(occupiedMask | targetBit, baseScore, unusedScore);
   };
 
-  dfs(blockedMask, 0, unusedBaseScore, 0, 0);
+  dfs(blockedMask, 0, unusedBaseScore);
 
-  return bestResult;
+  return { result: bestResult, durationMs: performance.now() - start };
+};
+
+const buildExactCoverMatrix = (context) => {
+  const { rows, cols, blockedMask, cellBits, piecePool } = context;
+
+  const cellColumns = [];
+  for (let i = 0; i < rows * cols; i += 1) {
+    const bit = cellBits[i];
+    if ((blockedMask & bit) !== 0n) continue;
+    cellColumns.push({ type: "cell", bit, index: i });
+  }
+
+  const pieceColumns = [];
+  piecePool.forEach((entry) => {
+    for (let count = 0; count < entry.remaining; count += 1) {
+      pieceColumns.push({ type: "piece", entry, id: `${entry.uid}#${count}` });
+    }
+  });
+
+  const pieceColumnIndex = new Map();
+  pieceColumns.forEach((col, index) => {
+    pieceColumnIndex.set(col.id, index);
+  });
+
+  const columns = [...cellColumns, ...pieceColumns];
+  const rowsData = [];
+  const columnToRows = Array.from({ length: columns.length }, () => new Set());
+
+  const addRow = (row) => {
+    const rowIndex = rowsData.length;
+    rowsData.push(row);
+    row.columns.forEach((colIndex) => columnToRows[colIndex].add(rowIndex));
+  };
+
+  cellColumns.forEach((col, colIndex) => {
+    const row = {
+      label: "빈칸",
+      modifier: null,
+      grade: null,
+      baseScore: 0,
+      shapeKey: null,
+      cells: [[Math.floor(col.index / cols), col.index % cols]],
+      columns: [colIndex],
+    };
+    addRow(row);
+  });
+
+  piecePool.forEach((entry) => {
+    entry.placements.forEach((placement) => {
+      const placementColumns = [];
+      const cells = [];
+      placement.cellIndexes.forEach((cellIndex) => {
+        const columnIndex = cellColumns.findIndex((col) => col.index === cellIndex);
+        if (columnIndex >= 0) {
+          placementColumns.push(columnIndex);
+          cells.push([Math.floor(cellIndex / cols), cellIndex % cols]);
+        }
+      });
+
+      if (!placementColumns.length) return;
+
+      for (let count = 0; count < entry.remaining; count += 1) {
+        const pieceColIndex = cellColumns.length + pieceColumnIndex.get(`${entry.uid}#${count}`);
+        const row = {
+          label: toPlacementLabel(entry),
+          modifier: entry.modifier,
+          grade: entry.grade,
+          baseScore: entry.baseScore,
+          shapeKey: entry.shapeKey,
+          cells,
+          columns: [...placementColumns, pieceColIndex],
+        };
+        addRow(row);
+      }
+    });
+  });
+
+  return { columns, rowsData, columnToRows };
+};
+
+const runAlgorithmX = (context, timeLimitMs) => {
+  const start = performance.now();
+  const deadline = start + timeLimitMs;
+  const { modifierPotential } = context;
+  const { columns, rowsData, columnToRows } = buildExactCoverMatrix(context);
+  const activeColumns = new Set(columns.map((_, index) => index));
+  const solutionRows = [];
+  let bestResult = createEmptyResult();
+
+  const modifierTotals = {};
+  let baseScore = 0;
+
+  const optimisticBonus = () => {
+    let optimistic = 0;
+    Object.keys(modifierPotential).forEach((modifier) => {
+      const placed = modifierTotals[modifier] || 0;
+      const capped = Math.min(placed + modifierPotential[modifier], 21);
+      optimistic += getBonusFromModifier(capped) - getBonusFromModifier(placed);
+    });
+    return optimistic;
+  };
+
+  const cover = (colIndex) => {
+    activeColumns.delete(colIndex);
+    columnToRows[colIndex].forEach((rowIndex) => {
+      const row = rowsData[rowIndex];
+      row.columns.forEach((c) => {
+        if (c !== colIndex) {
+          columnToRows[c].delete(rowIndex);
+        }
+      });
+    });
+  };
+
+  const uncover = (colIndex) => {
+    columnToRows[colIndex].forEach((rowIndex) => {
+      const row = rowsData[rowIndex];
+      row.columns.forEach((c) => {
+        if (c !== colIndex) {
+          columnToRows[c].add(rowIndex);
+        }
+      });
+    });
+    activeColumns.add(colIndex);
+  };
+
+  const chooseColumn = () => {
+    let best = null;
+    let bestSize = Number.POSITIVE_INFINITY;
+    activeColumns.forEach((colIndex) => {
+      const size = columnToRows[colIndex].size;
+      if (size < bestSize) {
+        best = colIndex;
+        bestSize = size;
+      }
+    });
+    return best;
+  };
+
+  const search = () => {
+    if (performance.now() > deadline) return;
+    const columnIndex = chooseColumn();
+    if (columnIndex === null) {
+      const result = evaluateStack(solutionRows.filter((row) => row.modifier), baseScore, modifierTotals);
+      if (result.totalScore > bestResult.totalScore) {
+        bestResult = result;
+      }
+      return;
+    }
+
+    const optimistic = baseScore + optimisticBonus();
+    if (optimistic <= bestResult.totalScore) return;
+
+    const rows = Array.from(columnToRows[columnIndex]);
+    for (let i = 0; i < rows.length; i += 1) {
+      const rowIndex = rows[i];
+      const row = rowsData[rowIndex];
+
+      solutionRows.push(row);
+      if (row.modifier) {
+        modifierTotals[row.modifier] = (modifierTotals[row.modifier] || 0) + row.cells.length;
+        baseScore += row.baseScore;
+      }
+
+      row.columns.forEach(cover);
+      search();
+      row.columns.forEach(uncover);
+
+      if (row.modifier) {
+        modifierTotals[row.modifier] -= row.cells.length;
+        if (modifierTotals[row.modifier] <= 0) delete modifierTotals[row.modifier];
+        baseScore -= row.baseScore;
+      }
+      solutionRows.pop();
+      if (performance.now() > deadline) break;
+    }
+  };
+
+  search();
+  return { result: bestResult, durationMs: performance.now() - start };
+};
+
+const runCsp = (context, timeLimitMs) => {
+  const start = performance.now();
+  const deadline = start + timeLimitMs;
+  const { boardMask, blockedMask, cellBits, bitToIndex, modifierPotential, piecePool, totalCells } = context;
+
+  const placementsStack = [];
+  const modifierTotals = {};
+  let bestResult = createEmptyResult();
+
+  const placementDomains = new Map();
+  piecePool.forEach((entry) => {
+    entry.placements.forEach((placement) => {
+      placement.cellIndexes.forEach((index) => {
+        if (!placementDomains.has(index)) placementDomains.set(index, []);
+        placementDomains.get(index).push({ entry, placement });
+      });
+    });
+  });
+
+  const futureBonusBound = () => {
+    let optimistic = 0;
+    Object.keys(modifierPotential).forEach((modifier) => {
+      const placed = modifierTotals[modifier] || 0;
+      const capped = Math.min(placed + modifierPotential[modifier], 21);
+      optimistic += getBonusFromModifier(capped) - getBonusFromModifier(placed);
+    });
+    return optimistic;
+  };
+
+  const selectCell = (freeMask) => {
+    let bestIndex = -1;
+    let bestSize = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < totalCells; index += 1) {
+      const bit = cellBits[index];
+      if ((freeMask & bit) === 0n) continue;
+      const domain = placementDomains.get(index);
+      const size = domain ? domain.length : 0;
+      if (size < bestSize) {
+        bestSize = size;
+        bestIndex = index;
+        if (size <= 1) break;
+      }
+    }
+    return bestIndex;
+  };
+
+  const dfs = (occupiedMask, baseScore) => {
+    if (performance.now() > deadline) return;
+    const freeMask = boardMask & ~occupiedMask;
+    if (freeMask === 0n) {
+      const evaluated = evaluateStack(placementsStack, baseScore, modifierTotals);
+      if (evaluated.totalScore > bestResult.totalScore) bestResult = evaluated;
+      return;
+    }
+
+    const optimistic = baseScore + futureBonusBound();
+    if (optimistic <= bestResult.totalScore) return;
+
+    const cellIndex = selectCell(freeMask);
+    if (cellIndex === -1) {
+      const evaluated = evaluateStack(placementsStack, baseScore, modifierTotals);
+      if (evaluated.totalScore > bestResult.totalScore) bestResult = evaluated;
+      return;
+    }
+
+    const bit = cellBits[cellIndex];
+    const domain = placementDomains.get(cellIndex) || [];
+    for (let i = 0; i < domain.length; i += 1) {
+      const { entry, placement } = domain[i];
+      if (entry.remaining <= 0) continue;
+      if ((placement.mask & occupiedMask) !== 0n) continue;
+
+      entry.remaining -= 1;
+      modifierTotals[entry.modifier] = (modifierTotals[entry.modifier] || 0) + entry.area;
+
+      placementsStack.push({
+        id: `${entry.uid}-${entry.used}`,
+        label: toPlacementLabel(entry),
+        grade: entry.grade,
+        modifier: entry.modifier,
+        baseScore: entry.baseScore,
+        shapeKey: entry.shapeKey,
+        cells: placement.cells,
+      });
+      entry.used += 1;
+
+      dfs(occupiedMask | placement.mask, baseScore + entry.baseScore);
+
+      entry.used -= 1;
+      placementsStack.pop();
+      modifierTotals[entry.modifier] -= entry.area;
+      if (modifierTotals[entry.modifier] <= 0) delete modifierTotals[entry.modifier];
+      entry.remaining += 1;
+      if (performance.now() > deadline) break;
+    }
+
+    dfs(occupiedMask | bit, baseScore);
+  };
+
+  dfs(blockedMask, 0);
+  return { result: bestResult, durationMs: performance.now() - start };
+};
+
+export const solveSugarBoard = ({
+  rows,
+  cols,
+  blocked = [],
+  pieces = [],
+  role,
+  timeLimitMs = 55000,
+}) => {
+  const context = buildContext({ rows, cols, blocked, pieces, role });
+  if (!context) {
+    return { best: createEmptyResult(), methods: [] };
+  }
+
+  const perMethodLimit = Math.max(5000, Math.floor(timeLimitMs / 3));
+
+  const methods = [
+    { key: "backtracking", label: "백트래킹 + 가지치기", runner: runBacktracking },
+    { key: "algorithmx", label: "Algorithm X (정확 일치)", runner: runAlgorithmX },
+    { key: "csp", label: "CSP 솔버", runner: runCsp },
+  ];
+
+  const results = methods.map((method) => {
+    const clonedContext = {
+      ...context,
+      modifierPotential: { ...context.modifierPotential },
+      piecePool: context.piecePool.map((entry) => ({
+        ...entry,
+        placements: entry.placements,
+        placementsByCell: entry.placementsByCell,
+        remaining: entry.remaining,
+        used: 0,
+      })),
+    };
+
+    const output = method.runner(clonedContext, perMethodLimit);
+    return { ...createMethodResult(method.label), key: method.key, ...output };
+  });
+
+  const best = results.reduce((acc, item) => {
+    if (!acc || item.result.totalScore > acc.totalScore) return item.result;
+    return acc;
+  }, null);
+
+  return { best: best || createEmptyResult(), methods: results };
 };

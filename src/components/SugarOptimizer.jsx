@@ -1,33 +1,16 @@
-// src/components/SugarOptimizer.jsx
-
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ROLE_LABELS, ROLE_MODIFIERS, GRADE_INFO } from "../constants/sugar";
 import { SHAPE_OPTIONS } from "../utils/sugar/shapes";
+import { solveSugarBoard } from "../utils/sugar/solver";
 import { ThemeContext } from "../context/ThemeContext";
+
+const DEFAULT_PIECES = [];
 
 const BOARD_SIZE = 7;
 const OPEN_ROWS = [2, 3, 4];
 const OPEN_COLS = [1, 2, 3, 4, 5];
 
 const cellKey = (row, col) => `${row},${col}`;
-
-// ✔ 보색 계산 함수
-const getComplementaryColor = (hex) => {
-  if (!hex) return "#000000";
-  let c = hex.replace("#", "");
-  if (c.length === 3) {
-    c = c
-      .split("")
-      .map((v) => v + v)
-      .join("");
-  }
-
-  const r = (255 - parseInt(c.substring(0, 2), 16)).toString(16).padStart(2, "0");
-  const g = (255 - parseInt(c.substring(2, 4), 16)).toString(16).padStart(2, "0");
-  const b = (255 - parseInt(c.substring(4, 6), 16)).toString(16).padStart(2, "0");
-
-  return `#${r}${g}${b}`;
-};
 
 const createInitialBlockedCells = () => {
   const openRows = new Set(OPEN_ROWS);
@@ -75,167 +58,123 @@ const ShapePreview = ({ shape, color = "#475569", cellSize = 16 }) => {
 
 const formatScore = (value) => value.toLocaleString("ko-KR");
 
-const SugarOptimizer = ({ appState, setAppState }) => {
-  const { darkMode, setDarkMode } = useContext(ThemeContext);
+const SugarOptimizer = () => {
+  const { darkMode, setDarkMode: setDarkModeExplicit } = useContext(ThemeContext);
 
-  const [localState, setLocalState] = useState(() => {
-    const initialBlocked = appState.blockedCells || createInitialBlockedCells();
-    const initialNewPiece = {
-      modifier: appState.newPiece.modifier || ROLE_MODIFIERS.dealer?.[0] || "",
-      grade: appState.newPiece.grade || "rare",
-    };
-    return {
-      blockedCells: initialBlocked,
-      playerRole: appState.playerRole,
-      pieces: appState.pieces,
-      boardImage: appState.boardImage,
-      piecesImage: appState.piecesImage,
-      solution: appState.solution,
-      isSolving: false,
-      newPiece: initialNewPiece,
-    };
-  });
+  const [blockedCells, setBlockedCells] = useState(() => createInitialBlockedCells());
+  const [playerRole, setPlayerRole] = useState("dealer");
+  const [pieces, setPieces] = useState(DEFAULT_PIECES);
+  const [boardImage, setBoardImage] = useState(null);
+  const [piecesImage, setPiecesImage] = useState(null);
+  const [solution, setSolution] = useState(null);
+  const [isSolving, setIsSolving] = useState(false);
 
-  const pieceIdRef = useRef(
-    appState.pieces.length > 0
-      ? Math.max(...appState.pieces.map((p) => parseInt(p.id.split("-")[1], 10))) + 1
-      : 1
-  );
+  const pieceIdRef = useRef(1);
 
-  // App과 동기화
-  useEffect(() => {
-    setAppState({
-      blockedCells: localState.blockedCells,
-      playerRole: localState.playerRole,
-      pieces: localState.pieces,
-      boardImage: localState.boardImage,
-      piecesImage: localState.piecesImage,
-      solution: localState.solution,
-      newPiece: localState.newPiece,
-    });
-  }, [localState, setAppState]);
+  const [newPiece, setNewPiece] = useState(() => ({
+    modifier: ROLE_MODIFIERS.dealer?.[0] || "",
+    grade: "rare",
+  }));
 
   const handleThemeSelect = (mode) => {
-    if (mode === "dark") setDarkMode(true);
-    else if (mode === "light") setDarkMode(false);
+    if (mode === "dark") {
+      setDarkModeExplicit(true);
+    } else if (mode === "light") {
+      setDarkModeExplicit(false);
+    }
   };
 
-  // 역할/등급 변경 시 newPiece.modifier 정리
   useEffect(() => {
-    setLocalState((prev) => {
-      const { playerRole, newPiece } = prev;
-
-      if (newPiece.grade === "unique") {
-        if (newPiece.modifier === "") return prev;
-        return { ...prev, newPiece: { ...newPiece, modifier: "" } };
-      }
-
-      const mods = ROLE_MODIFIERS[playerRole] || [];
-      const nextMod = mods.includes(newPiece.modifier)
-        ? newPiece.modifier
-        : mods[0] || "";
-      if (nextMod === newPiece.modifier) return prev;
-
-      return { ...prev, newPiece: { ...newPiece, modifier: nextMod } };
+    setNewPiece((prev) => {
+      const modifiers = ROLE_MODIFIERS[playerRole] || [];
+      return {
+        ...prev,
+        modifier: modifiers.includes(prev.modifier) ? prev.modifier : modifiers[0] || "",
+      };
     });
-  }, [localState.playerRole, localState.newPiece.grade]);
+  }, [playerRole]);
 
-  // ✅ 각 칸 → 어떤 조각/순서/수식어인지 매핑
   const highlightMap = useMemo(() => {
-    if (!localState.solution) return new Map();
+    const best = solution?.best;
+    if (!best) return new Map();
     const map = new Map();
-    localState.solution.placements.forEach((placement, index) => {
+    best.placements.forEach((placement, index) => {
       placement.cells.forEach(([row, col]) => {
         map.set(cellKey(row, col), {
           grade: placement.grade,
           modifier: placement.modifier,
           label: placement.label,
           order: index + 1,
-          placementId: placement.id,
         });
       });
     });
     return map;
-  }, [localState.solution]);
+  }, [solution]);
+
+  const sortedMethods = useMemo(() => {
+    if (!solution?.methods) return [];
+    return [...solution.methods].sort(
+      (a, b) => (b.result?.totalScore || 0) - (a.result?.totalScore || 0)
+    );
+  }, [solution]);
 
   const revokeUrl = (url) => {
-    if (url) URL.revokeObjectURL(url);
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
   };
 
-  useEffect(() => () => revokeUrl(localState.boardImage), [localState.boardImage]);
-  useEffect(() => () => revokeUrl(localState.piecesImage), [localState.piecesImage]);
+  useEffect(() => () => revokeUrl(boardImage), [boardImage]);
+  useEffect(() => () => revokeUrl(piecesImage), [piecesImage]);
 
-  const handleImageChange = (event, field) => {
+  const handleImageChange = (event, setter) => {
     const file = event.target.files?.[0];
     if (!file) {
-      setLocalState((prev) => {
-        revokeUrl(prev[field]);
-        return { ...prev, [field]: null };
+      setter((prev) => {
+        revokeUrl(prev);
+        return null;
       });
       return;
     }
     const url = URL.createObjectURL(file);
-    setLocalState((prev) => {
-      revokeUrl(prev[field]);
-      return { ...prev, [field]: url };
+    setter((prev) => {
+      revokeUrl(prev);
+      return url;
     });
   };
 
   const updateRole = (value) => {
-    setLocalState((prev) => ({ ...prev, playerRole: value, solution: null }));
+    setPlayerRole(value);
+    setSolution(null);
   };
 
   const toggleCell = (row, col) => {
-    setLocalState((prev) => {
-      const next = new Set(prev.blockedCells);
+    setSolution(null);
+    setBlockedCells((prev) => {
+      const next = new Set(prev);
       const key = cellKey(row, col);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return { ...prev, blockedCells: next, solution: null };
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
     });
   };
 
   const handleResetOpenCells = () => {
-    setLocalState((prev) => ({
-      ...prev,
-      blockedCells: createInitialBlockedCells(),
-      solution: null,
-    }));
-  };
-
-  const handleOpenAllCells = () => {
-    setLocalState((prev) => ({
-      ...prev,
-      blockedCells: new Set(),
-      solution: null,
-    }));
+    setBlockedCells(createInitialBlockedCells());
+    setSolution(null);
   };
 
   const handleNewPieceChange = (field, value) => {
-    setLocalState((prev) => ({
-      ...prev,
-      newPiece: { ...prev.newPiece, [field]: value },
-    }));
+    setNewPiece((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAddShape = (shapeKey) => {
-    const grade = localState.newPiece.grade;
-    const isUnique = grade === "unique";
-    const modifier = isUnique ? "" : localState.newPiece.modifier;
-
-    if (!grade) return;
-    if (!isUnique && !modifier) return;
-
-    if (isUnique) {
-      const alreadyHasUnique = localState.pieces.some(
-        (p) => p.role === localState.playerRole && p.grade === "unique"
-      );
-      if (alreadyHasUnique) {
-        alert("유니크 조각은 한 개까지만 추가할 수 있습니다.");
-        return;
-      }
-    }
-
+    const modifier = newPiece.modifier;
+    const grade = newPiece.grade;
+    if (!modifier || !grade) return;
     const gradeInfo = GRADE_INFO[grade];
     const shape = shapeEntries.find((entry) => entry.key === shapeKey);
     if (!shape) return;
@@ -243,136 +182,67 @@ const SugarOptimizer = ({ appState, setAppState }) => {
 
     const piece = {
       id: `piece-${pieceIdRef.current}`,
-      role: localState.playerRole,
+      role: playerRole,
       modifier,
       grade,
       shapeKey,
       quantity: 1,
     };
     pieceIdRef.current += 1;
-    setLocalState((prev) => ({
-      ...prev,
-      pieces: [...prev.pieces, piece],
-      solution: null,
-    }));
+    setPieces((prev) => [...prev, piece]);
+    setSolution(null);
   };
 
   const handleRemovePiece = (id) => {
-    setLocalState((prev) => ({
-      ...prev,
-      pieces: prev.pieces.filter((piece) => piece.id !== id),
-      solution: null,
-    }));
+    setPieces((prev) => prev.filter((piece) => piece.id !== id));
+    setSolution(null);
   };
 
   const handleResetPieces = () => {
+    setPieces([]);
     pieceIdRef.current = 1;
-    setLocalState((prev) => ({ ...prev, pieces: [], solution: null }));
+    setSolution(null);
   };
 
   const handleSolve = () => {
-    setLocalState((prev) => ({
-      ...prev,
-      isSolving: true,
-      solution: null,
-    }));
+    setIsSolving(true);
+    try {
+      const blocked = Array.from(blockedCells).map((key) => {
+        const [row, col] = key.split(",").map(Number);
+        return { row, col };
+      });
 
-    const worker = new Worker(new URL("../utils/sugar/worker.js", import.meta.url));
-
-    const blocked = Array.from(localState.blockedCells).map((key) => {
-      const [row, col] = key.split(",").map(Number);
-      return { row, col };
-    });
-
-    const normalizedPieces = localState.pieces.map((piece) => ({
-      ...piece,
-      quantity: Math.max(0, Number(piece.quantity) || 0),
-    }));
-
-    worker.postMessage({
-      rows: BOARD_SIZE,
-      cols: BOARD_SIZE,
-      blocked,
-      pieces: normalizedPieces,
-      role: localState.playerRole,
-    });
-
-    worker.onmessage = (event) => {
-      const { result } = event.data;
-      setLocalState((prev) => ({
-        ...prev,
-        solution: result,
-        isSolving: false,
+      const normalizedPieces = pieces.map((piece) => ({
+        ...piece,
+        quantity: Math.max(0, Number(piece.quantity) || 0),
       }));
-      worker.terminate();
-    };
 
-    worker.onerror = (error) => {
-      console.error("Worker error:", error);
-      setLocalState((prev) => ({ ...prev, isSolving: false }));
-      worker.terminate();
-    };
+      const result = solveSugarBoard({
+        rows: BOARD_SIZE,
+        cols: BOARD_SIZE,
+        blocked,
+        pieces: normalizedPieces,
+        role: playerRole,
+      });
+
+      setSolution(result);
+    } finally {
+      setIsSolving(false);
+    }
   };
 
-  // ✅ 윤곽선 + 분류 뱃지까지 포함한 셀 렌더링
   const renderCell = (row, col) => {
     const key = cellKey(row, col);
-    const blocked = localState.blockedCells.has(key);
+    const blocked = blockedCells.has(key);
     const highlight = highlightMap.get(key);
     const gradeColor = highlight ? GRADE_INFO[highlight.grade]?.color : null;
-
     const cellContent = highlight ? highlight.order : blocked ? "🔒" : "";
-
-    // 윤곽선 계산
-    let borderStyles = {};
-    if (highlight) {
-      const baseColor = GRADE_INFO[highlight.grade]?.color || "#0f172a";
-      const borderColor = getComplementaryColor(baseColor);
-      const BORDER_WIDTH = "4px";
-
-      const neighborSame = (dr, dc) => {
-        const nr = row + dr;
-        const nc = col + dc;
-        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) return false;
-        const nKey = cellKey(nr, nc);
-        const nh = highlightMap.get(nKey);
-        return nh && nh.placementId === highlight.placementId;
-      };
-
-      const topSame = neighborSame(-1, 0);
-      const bottomSame = neighborSame(1, 0);
-      const leftSame = neighborSame(0, -1);
-      const rightSame = neighborSame(0, 1);
-
-      borderStyles = {
-        borderTop: topSame ? "1px solid transparent" : `${BORDER_WIDTH} solid ${borderColor}`,
-        borderBottom: bottomSame
-          ? "1px solid transparent"
-          : `${BORDER_WIDTH} solid ${borderColor}`,
-        borderLeft: leftSame ? "1px solid transparent" : `${BORDER_WIDTH} solid ${borderColor}`,
-        borderRight: rightSame
-          ? "1px solid transparent"
-          : `${BORDER_WIDTH} solid ${borderColor}`,
-      };
-    }
-
-    const badgeText =
-      highlight &&
-      (highlight.grade === "unique"
-        ? "유니크"
-        : highlight.modifier || "");
-
     return (
       <button
         key={key}
         type="button"
-        className={`sugar-cell ${blocked ? "blocked" : ""} ${
-          highlight ? "filled" : ""
-        }`}
-        style={{
-          backgroundColor: gradeColor || undefined,
-          ...borderStyles,
-        }}
+        className={`sugar-cell ${blocked ? "blocked" : ""} ${highlight ? "filled" : ""}`}
+        style={{ backgroundColor: gradeColor || undefined }}
         onClick={() => toggleCell(row, col)}
         aria-label={
           blocked
@@ -381,21 +251,13 @@ const SugarOptimizer = ({ appState, setAppState }) => {
             ? `${highlight.label} (${highlight.order}번)`
             : "빈 칸"
         }
-        title={
-          highlight
-            ? `${highlight.label} (${highlight.order}번)`
-            : blocked
-            ? "잠긴 칸"
-            : "빈 칸"
-        }
       >
-        <span className="cell-main">{cellContent}</span>
-        {badgeText && <span className="cell-badge">{badgeText}</span>}
+        {cellContent}
       </button>
     );
   };
 
-  const modifiersForRole = ROLE_MODIFIERS[localState.playerRole] || [];
+  const modifiersForRole = ROLE_MODIFIERS[playerRole] || [];
   const shapeLookup = useMemo(() => {
     const map = new Map();
     shapeEntries.forEach((shape) => map.set(shape.key, shape));
@@ -409,8 +271,8 @@ const SugarOptimizer = ({ appState, setAppState }) => {
     return order;
   }, []);
   const playerPieces = useMemo(
-    () => localState.pieces.filter((piece) => piece.role === localState.playerRole),
-    [localState.pieces, localState.playerRole]
+    () => pieces.filter((piece) => piece.role === playerRole),
+    [pieces, playerRole]
   );
   const playerPieceCount = useMemo(
     () => playerPieces.reduce((sum, piece) => sum + (Number(piece.quantity) || 0), 0),
@@ -426,14 +288,7 @@ const SugarOptimizer = ({ appState, setAppState }) => {
 
   const groupedPieces = useMemo(() => {
     const groups = new Map();
-    const uniquePieces = [];
-
     playerPieces.forEach((piece) => {
-      if (piece.grade === "unique") {
-        uniquePieces.push(piece);
-        return;
-      }
-
       const key = piece.modifier || "기타";
       if (!groups.has(key)) {
         groups.set(key, []);
@@ -448,9 +303,8 @@ const SugarOptimizer = ({ appState, setAppState }) => {
       return a.localeCompare(b, "ko-KR");
     });
 
-    const result = sorted.map(([modifier, list]) => ({
+    return sorted.map(([modifier, list]) => ({
       modifier,
-      isUnique: false,
       pieces: list.sort((pieceA, pieceB) => {
         const gradeDiff =
           (gradeOrder.get(pieceA.grade) ?? Number.MAX_SAFE_INTEGER) -
@@ -461,30 +315,17 @@ const SugarOptimizer = ({ appState, setAppState }) => {
         return areaA - areaB;
       }),
     }));
-
-    if (uniquePieces.length) {
-      result.push({
-        modifier: "유니크",
-        isUnique: true,
-        pieces: uniquePieces.sort((a, b) => {
-          const areaA = shapeLookup.get(a.shapeKey)?.area || 0;
-          const areaB = shapeLookup.get(b.shapeKey)?.area || 0;
-          return areaA - areaB;
-        }),
-      });
-    }
-
-    return result;
   }, [gradeOrder, modifierOrder, playerPieces, shapeLookup]);
 
-  const gradeSelectionInfo = GRADE_INFO[localState.newPiece.grade];
+  const gradeSelectionInfo = GRADE_INFO[newPiece.grade];
   const allowedShapeGroups = useMemo(() => {
     const limit = gradeSelectionInfo?.maxCells;
     const groups = new Map();
     shapeEntries.forEach((shape) => {
-      if (localState.newPiece.grade === "unique" && shape.area !== 8) return;
       if (limit && shape.area > limit) return;
-      if (!groups.has(shape.area)) groups.set(shape.area, []);
+      if (!groups.has(shape.area)) {
+        groups.set(shape.area, []);
+      }
       groups.get(shape.area).push(shape);
     });
 
@@ -494,17 +335,12 @@ const SugarOptimizer = ({ appState, setAppState }) => {
         area,
         shapes: shapes.sort((a, b) => a.key.localeCompare(b.key)),
       }));
-  }, [gradeSelectionInfo?.maxCells, localState.newPiece.grade]);
+  }, [gradeSelectionInfo?.maxCells]);
 
   return (
     <div className={`sugar-view ${darkMode ? "dark" : ""}`}>
-      <h1 className="sugar-title">설탕 유리 조각 배치</h1>
-
-      <p className="sugar-subtitle">
-        아직 사진은 지원하지 않습니다. 추후 일정 크기의 사진으로 입력받아 자동 입력되게 만들겠습니다. 죄송합니다.
-      </p>
-
-      <div className="theme-toggle-right">
+      <div className="sugar-toolbar">
+        <h1>🧊 설탕 유리 배치 도우미</h1>
         <div className="theme-toggle" role="group" aria-label="테마 선택">
           <button
             type="button"
@@ -522,6 +358,10 @@ const SugarOptimizer = ({ appState, setAppState }) => {
           </button>
         </div>
       </div>
+      <p className="sugar-subtitle">
+        빈칸 사진과 조각 사진을 업로드한 뒤, 격자를 직접 표시하고 보유 중인 조각을
+        입력하면 가장 높은 균열 저항력을 계산합니다.
+      </p>
 
       <div className="sugar-layout">
         <section className="sugar-card">
@@ -534,17 +374,13 @@ const SugarOptimizer = ({ appState, setAppState }) => {
             <div className="role-button-row" role="group" aria-label="역할군 선택">
               {Object.entries(ROLE_LABELS).map(([value, label]) => {
                 const modifiers = ROLE_MODIFIERS[value] || [];
-                const modifierLabel = modifiers.length
-                  ? modifiers.join(" · ")
-                  : "수식어 정보 없음";
+                const modifierLabel = modifiers.length ? modifiers.join(" · ") : "수식어 정보 없음";
                 return (
                   <button
                     key={value}
                     type="button"
-                    className={`role-button ${
-                      localState.playerRole === value ? "active" : ""
-                    }`}
-                    aria-pressed={localState.playerRole === value}
+                    className={`role-button ${playerRole === value ? "active" : ""}`}
+                    aria-pressed={playerRole === value}
                     onClick={() => updateRole(value)}
                   >
                     <span className="role-button-label">{label}</span>
@@ -559,37 +395,22 @@ const SugarOptimizer = ({ appState, setAppState }) => {
             <p className="board-hint">
               잠긴 칸(🔒)을 다시 누르면 열리고, 열린 칸을 다시 누르면 잠글 수 있습니다.
             </p>
-            <div className="board-hint-actions">
-              <button
-                type="button"
-                className="ghost small"
-                onClick={handleOpenAllCells}
-              >
-                모두 열기
-              </button>
-              <button
-                type="button"
-                className="ghost small"
-                onClick={handleResetOpenCells}
-              >
-                열린 칸 초기화
-              </button>
-            </div>
+            <button type="button" className="ghost small" onClick={handleResetOpenCells}>
+              열린 칸 초기화
+            </button>
           </div>
 
           <div className="sugar-grid-frame">
             <div
-              className={`sugar-grid ${localState.isSolving ? "busy" : ""}`}
-              aria-busy={localState.isSolving}
+              className={`sugar-grid ${isSolving ? "busy" : ""}`}
+              aria-busy={isSolving}
               style={{
                 gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)`,
                 gridTemplateRows: `repeat(${BOARD_SIZE}, 1fr)`,
               }}
             >
               {Array.from({ length: BOARD_SIZE }).map((_, row) =>
-                Array.from({ length: BOARD_SIZE }).map((__, col) =>
-                  renderCell(row, col)
-                )
+                Array.from({ length: BOARD_SIZE }).map((__, col) => renderCell(row, col))
               )}
             </div>
           </div>
@@ -598,36 +419,16 @@ const SugarOptimizer = ({ appState, setAppState }) => {
             <div>
               <label className="upload-label">
                 빈칸 사진 업로드
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageChange(e, "boardImage")}
-                />
+                <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, setBoardImage)} />
               </label>
-              {localState.boardImage && (
-                <img
-                  src={localState.boardImage}
-                  alt="보드 미리보기"
-                  className="preview-image"
-                />
-              )}
+              {boardImage && <img src={boardImage} alt="보드 미리보기" className="preview-image" />}
             </div>
             <div>
               <label className="upload-label">
                 조각 사진 업로드
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageChange(e, "piecesImage")}
-                />
+                <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, setPiecesImage)} />
               </label>
-              {localState.piecesImage && (
-                <img
-                  src={localState.piecesImage}
-                  alt="조각 미리보기"
-                  className="preview-image"
-                />
-              )}
+              {piecesImage && <img src={piecesImage} alt="조각 미리보기" className="preview-image" />}
             </div>
           </div>
         </section>
@@ -635,8 +436,7 @@ const SugarOptimizer = ({ appState, setAppState }) => {
         <section className="sugar-card inventory-card">
           <div className="sugar-section-title inventory-title-row">
             <span>
-              2. 보유 중인 설탕 유리조각{" "}
-              <span className="inventory-count">({playerPieceCount}개)</span>
+              2. 보유 중인 설탕 유리조각 <span className="inventory-count">({playerPieceCount}개)</span>
             </span>
             <button type="button" className="ghost small" onClick={handleResetPieces}>
               보유 조각 초기화
@@ -648,30 +448,22 @@ const SugarOptimizer = ({ appState, setAppState }) => {
                 <div className="piece-form">
                   <div className="piece-form-row compact">
                     <label>
-                      수식어 ({ROLE_LABELS[localState.playerRole]})
-                      {localState.newPiece.grade === "unique" ? (
-                        <div className="unique-modifier-placeholder">
-                          유니크는 수식어가 없습니다.
-                        </div>
-                      ) : (
-                        <select
-                          value={localState.newPiece.modifier}
-                          onChange={(e) =>
-                            handleNewPieceChange("modifier", e.target.value)
-                          }
-                        >
-                          {modifiersForRole.map((modifier) => (
-                            <option key={modifier} value={modifier}>
-                              {modifier}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      수식어 ({ROLE_LABELS[playerRole]})
+                      <select
+                        value={newPiece.modifier}
+                        onChange={(e) => handleNewPieceChange("modifier", e.target.value)}
+                      >
+                        {modifiersForRole.map((modifier) => (
+                          <option key={modifier} value={modifier}>
+                            {modifier}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label>
                       등급
                       <select
-                        value={localState.newPiece.grade}
+                        value={newPiece.grade}
                         onChange={(e) => handleNewPieceChange("grade", e.target.value)}
                       >
                         {gradeEntries.map(([value, info]) => (
@@ -682,45 +474,38 @@ const SugarOptimizer = ({ appState, setAppState }) => {
                       </select>
                     </label>
                   </div>
-                  <p className="piece-hint">
-                    최대 {gradeSelectionInfo?.maxCells || "무제한"}칸 조각까지 담을 수
-                    있습니다. 아래 모양을 누르면 즉시 목록에 추가됩니다.
-                  </p>
-                </div>
-
-                <div className="shape-groups">
-                  {allowedShapeGroups.length === 0 && (
-                    <p className="empty-text">
-                      선택한 등급에서 사용할 수 있는 모양이 없습니다.
-                    </p>
-                  )}
-                  {allowedShapeGroups.map((group) => (
-                    <div key={group.area} className="shape-group">
-                      <div className="shape-group-title">{group.area}칸 조각</div>
-                      <div className="shape-group-grid">
-                        {group.shapes.map((shape) => (
-                          <button
-                            key={shape.key}
-                            type="button"
-                            className="shape-option add"
-                            onClick={() => handleAddShape(shape.key)}
-                            aria-label={`${group.area}칸 모양 추가`}
-                          >
-                            <ShapePreview
-                              shape={shape}
-                              color={GRADE_INFO[localState.newPiece.grade]?.color}
-                            />
-                            <span className="shape-area-label">+{group.area}칸</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
                 <p className="piece-hint">
-                  {ROLE_LABELS[localState.playerRole]} 전용 조각만 추가됩니다.
+                  최대 {gradeSelectionInfo?.maxCells || "무제한"}칸 조각까지 담을 수 있습니다. 아래 모양을
+                  누르면 즉시 목록에 추가됩니다.
                 </p>
+              </div>
+
+              <div className="shape-groups">
+                {allowedShapeGroups.length === 0 && (
+                  <p className="empty-text">선택한 등급에서 사용할 수 있는 모양이 없습니다.</p>
+                )}
+                {allowedShapeGroups.map((group) => (
+                  <div key={group.area} className="shape-group">
+                    <div className="shape-group-title">{group.area}칸 조각</div>
+                    <div className="shape-group-grid">
+                      {group.shapes.map((shape) => (
+                        <button
+                          key={shape.key}
+                          type="button"
+                          className="shape-option add"
+                          onClick={() => handleAddShape(shape.key)}
+                          aria-label={`${group.area}칸 모양 추가`}
+                        >
+                          <ShapePreview shape={shape} color={GRADE_INFO[newPiece.grade]?.color} />
+                          <span className="shape-area-label">+{group.area}칸</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="piece-hint">{ROLE_LABELS[playerRole]} 전용 조각만 추가됩니다.</p>
               </div>
             </div>
 
@@ -728,25 +513,14 @@ const SugarOptimizer = ({ appState, setAppState }) => {
               <div className="inventory-box vertical-list" aria-live="polite">
                 <div className="inventory-summary">
                   <span>수식어별로 조각을 확인하세요.</span>
-                  <span>유니크는 별도 섹션에 표시됩니다.</span>
+                  <span>필요 시 스크롤하여 비교하세요.</span>
                 </div>
                 {groupedPieces.length > 0 ? (
                   <div className="modifier-groups-column">
                     {groupedPieces.map((group) => (
                       <div key={group.modifier} className="modifier-group">
                         <div className="modifier-group-header">
-                          <span>
-                            {group.isUnique ? (
-                              <>
-                                <span className="unique-icon" aria-hidden="true">
-                                  ⭐
-                                </span>{" "}
-                                유니크
-                              </>
-                            ) : (
-                              group.modifier
-                            )}
-                          </span>
+                          <span>{group.modifier}</span>
                           <span>{group.pieces.length}개</span>
                         </div>
                         <div className="piece-gallery" role="list">
@@ -754,39 +528,18 @@ const SugarOptimizer = ({ appState, setAppState }) => {
                             const info = GRADE_INFO[piece.grade];
                             const shape = shapeLookup.get(piece.shapeKey);
                             return (
-                              <div
-                                key={piece.id}
-                                className="piece-card compact"
-                                role="listitem"
-                              >
-                                <ShapePreview
-                                  shape={shape}
-                                  color={info?.color || "#475569"}
-                                  cellSize={14}
-                                />
+                              <div key={piece.id} className="piece-card compact" role="listitem">
+                                <ShapePreview shape={shape} color={info?.color || "#475569"} cellSize={14} />
                                 <div className="piece-card-body">
-                                  <div
-                                    className="piece-card-grade"
-                                    style={{ color: info?.color || "#475569" }}
-                                  >
+                                  <div className="piece-card-grade" style={{ color: info?.color || "#475569" }}>
                                     {info?.label}
                                   </div>
                                   <div className="piece-card-details">
-                                    <span>
-                                      {shape?.area ?? "?"}칸 · x{piece.quantity || 1}
-                                    </span>
-                                    <span className="piece-card-modifier">
-                                      {piece.grade === "unique"
-                                        ? "유니크"
-                                        : piece.modifier}
-                                    </span>
+                                    <span>{shape?.area ?? "?"}칸 · x{piece.quantity || 1}</span>
+                                    <span className="piece-card-modifier">{piece.modifier}</span>
                                   </div>
                                 </div>
-                                <button
-                                  type="button"
-                                  className="ghost"
-                                  onClick={() => handleRemovePiece(piece.id)}
-                                >
+                                <button type="button" className="ghost" onClick={() => handleRemovePiece(piece.id)}>
                                   삭제
                                 </button>
                               </div>
@@ -806,56 +559,42 @@ const SugarOptimizer = ({ appState, setAppState }) => {
       </div>
 
       <div className="sugar-actions">
-        <button
-          type="button"
-          className="primary"
-          onClick={handleSolve}
-          disabled={localState.isSolving}
-        >
-          {localState.isSolving ? "계산 중..." : "최적 배치 계산"}
+        <button type="button" className="primary" onClick={handleSolve} disabled={isSolving}>
+          {isSolving ? "계산 중..." : "최적 배치 계산"}
         </button>
-        <p className="actions-hint">
-          잠긴 칸과 보유 조각을 설정한 뒤 계산 버튼을 눌러주세요.
-        </p>
+        <p className="actions-hint">잠긴 칸과 보유 조각을 설정한 뒤 계산 버튼을 눌러주세요.</p>
       </div>
 
-      {localState.isSolving && (
+      {isSolving && (
         <div className="solve-progress" role="status" aria-live="polite">
           <span className="solve-spinner" aria-hidden />
           <span>최적 배치를 계산 중입니다...</span>
         </div>
       )}
 
-      {localState.solution && (
+      {solution?.best && (
         <section className="sugar-card solution-card">
           <div className="sugar-section-title">3. 결과 요약</div>
           <div className="solution-summary">
             <div>
               <div className="solution-label">총 점수</div>
-              <div className="solution-value">
-                {formatScore(localState.solution.totalScore)} 점
-              </div>
+              <div className="solution-value">{formatScore(solution.best.totalScore)} 점</div>
             </div>
             <div>
               <div className="solution-label">기본 점수</div>
-              <div className="solution-value">
-                {formatScore(localState.solution.baseScore)} 점
-              </div>
+              <div className="solution-value">{formatScore(solution.best.baseScore)} 점</div>
             </div>
             <div>
               <div className="solution-label">추가 점수</div>
-              <div className="solution-value">
-                {formatScore(localState.solution.bonusScore)} 점
-              </div>
+              <div className="solution-value">{formatScore(solution.best.bonusScore)} 점</div>
             </div>
           </div>
 
-          {localState.solution.bonusBreakdown.length > 0 ? (
+          {solution.best.bonusBreakdown.length > 0 ? (
             <ul className="bonus-list">
-              {localState.solution.bonusBreakdown.map((bonus) => (
+              {solution.best.bonusBreakdown.map((bonus) => (
                 <li key={bonus.modifier}>
-                  <strong>{bonus.modifier}</strong> {bonus.cells}칸 → +
-                  {formatScore(bonus.bonus)}점
+                  <strong>{bonus.modifier}</strong> {bonus.cells}칸 → +{formatScore(bonus.bonus)}점
                 </li>
               ))}
             </ul>
@@ -864,34 +603,50 @@ const SugarOptimizer = ({ appState, setAppState }) => {
           )}
 
           <div className="placement-list">
-            {localState.solution.placements.map((placement, index) => {
+            {solution.best.placements.map((placement, index) => {
               const info = GRADE_INFO[placement.grade];
               return (
                 <div key={placement.id} className="placement-item">
-                  <div
-                    className="placement-index"
-                    style={{ backgroundColor: info?.color || "#475569" }}
-                  >
+                  <div className="placement-index" style={{ backgroundColor: info?.color || "#475569" }}>
                     {index + 1}
                   </div>
                   <div>
                     <div className="placement-label">{placement.label}</div>
                     <div className="placement-meta">
-                      {placement.grade === "unique"
-                        ? info?.label
-                        : `${placement.modifier} · ${info?.label}`}
-                      {" · "}
-                      +{formatScore(placement.baseScore)}점
+                      {placement.modifier} · {info?.label} · +{formatScore(placement.baseScore)}점
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {sortedMethods.length ? (
+            <div className="method-comparison">
+              <h4>다른 솔버 결과</h4>
+              <ul>
+                {sortedMethods.map((method, index) => (
+                  <li key={method.key} className="method-row">
+                    <div className="method-meta">
+                      <strong>
+                        {method.label}
+                        {index === 0 ? " (최고점)" : ""}
+                      </strong>
+                      <span className="method-time">{method.durationMs.toFixed(0)}ms</span>
+                    </div>
+                    <div className="method-score">
+                      {formatScore(method.result.totalScore)} 점
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="method-note">가장 높은 점수의 풀이를 위에 표시하고, 다른 알고리즘 결과도 함께 비교할 수 있습니다.</p>
+            </div>
+          ) : null}
         </section>
       )}
 
-      {localState.isSolving && (
+      {isSolving && (
         <div className="solve-overlay" role="alert" aria-live="assertive">
           <div className="solve-overlay-card">
             <span className="solve-spinner large" aria-hidden />
@@ -902,18 +657,6 @@ const SugarOptimizer = ({ appState, setAppState }) => {
           </div>
         </div>
       )}
-
-      <footer className={`sugar-footer ${darkMode ? "dark" : ""}`}>
-        Feedback은{" "}
-        <a
-          href="https://open.kakao.com/o/sBd2uO0h"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          타디스
-        </a>
-        를 찾아주세요.
-      </footer>
     </div>
   );
 };

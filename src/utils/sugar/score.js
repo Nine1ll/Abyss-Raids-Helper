@@ -1,5 +1,3 @@
-// src/utils/sugar/score.js
-
 import { BONUS_PER_STEP, GRADE_INFO } from "../../constants/sugar";
 
 export const getPieceBaseScore = (grade, cellCount) => {
@@ -16,8 +14,6 @@ export const getBonusFromModifier = (cellCount) => {
   return bonusCount * BONUS_PER_STEP;
 };
 
-// ✅ 수정: 유니크 등급은 수식어 보너스가 없으므로, summarizeBonuses 함수는 기존 로직 유지
-// (solver.js에서 modifierPotential, modifierTotals를 계산할 때 유니크를 제외하면 충분)
 export const summarizeBonuses = (modifierMap) => {
   const breakdown = [];
   let total = 0;
