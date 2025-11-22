@@ -9,6 +9,8 @@ const DEFAULT_PIECES = [];
 const BOARD_SIZE = 7;
 const OPEN_ROWS = [2, 3, 4];
 const OPEN_COLS = [1, 2, 3, 4, 5];
+const SOLVER_TIME_LIMIT_MS = 180000;
+const SOLVER_TIME_LIMIT_MINUTES = Math.max(1, Math.round(SOLVER_TIME_LIMIT_MS / 60000));
 
 const cellKey = (row, col) => `${row},${col}`;
 
@@ -118,6 +120,33 @@ const SugarOptimizer = () => {
     );
   }, [solution]);
 
+  const bestMethodKey = sortedMethods[0]?.key || null;
+  const timedOutMethods = useMemo(
+    () => sortedMethods.filter((method) => method.timedOut),
+    [sortedMethods]
+  );
+
+  const solverFeedback = useMemo(() => {
+    const notes = [];
+    if (timedOutMethods.length) {
+      notes.push(
+        `${timedOutMethods.length}개 알고리즘이 제한 시간 ${SOLVER_TIME_LIMIT_MINUTES}분을 모두 사용했어요. 잠긴 칸을 줄이거나 조각 수를 줄여 다시 시도해 보세요.`
+      );
+    }
+
+    if (solution?.best && solution.best.placements.length === 0) {
+      if (playerPieceCount === 0) {
+        notes.push("보유 조각이 없어서 점수를 계산할 수 없었습니다. 조각을 추가해 주세요.");
+      } else {
+        notes.push(
+          "제한 시간 안에 더 나은 배치를 찾기 어려웠어요. 일부 조각의 수를 줄이거나 열린 칸을 늘리고 다시 실행해 보세요."
+        );
+      }
+    }
+
+    return notes;
+  }, [playerPieceCount, solution, timedOutMethods.length]);
+
   const revokeUrl = (url) => {
     if (url) {
       URL.revokeObjectURL(url);
@@ -223,6 +252,7 @@ const SugarOptimizer = () => {
         blocked,
         pieces: normalizedPieces,
         role: playerRole,
+        timeLimitMs: SOLVER_TIME_LIMIT_MS,
       });
 
       setSolution(result);
@@ -623,24 +653,51 @@ const SugarOptimizer = () => {
 
           {sortedMethods.length ? (
             <div className="method-comparison">
-              <h4>다른 솔버 결과</h4>
+              <h4>알고리즘별 최고 결과</h4>
               <ul>
-                {sortedMethods.map((method, index) => (
-                  <li key={method.key} className="method-row">
-                    <div className="method-meta">
-                      <strong>
-                        {method.label}
-                        {index === 0 ? " (최고점)" : ""}
-                      </strong>
-                      <span className="method-time">{method.durationMs.toFixed(0)}ms</span>
-                    </div>
-                    <div className="method-score">
-                      {formatScore(method.result.totalScore)} 점
-                    </div>
-                  </li>
-                ))}
+                {sortedMethods.map((method) => {
+                  const score = method.result?.totalScore || 0;
+                  const base = method.result?.baseScore || 0;
+                  const bonus = method.result?.bonusScore || 0;
+                  const placementCount = method.result?.placements?.length || 0;
+                  return (
+                    <li key={method.key} className="method-row">
+                      <div className="method-meta">
+                        <span className={`method-badge ${method.key === bestMethodKey ? "primary" : "secondary"}`}>
+                          {method.key === bestMethodKey ? "최고점" : "대안"}
+                        </span>
+                        <div className="method-title">
+                          <strong>{method.label}</strong>
+                          <span className={`method-status ${method.timedOut ? "warning" : "ok"}`}>
+                            {method.timedOut
+                              ? `시간 초과 (${SOLVER_TIME_LIMIT_MINUTES}분)`
+                              : "완료"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="method-details">
+                        <div className="method-score">{formatScore(score)} 점</div>
+                        <div className="method-breakdown">
+                          <span>기본 {formatScore(base)}점</span>
+                          <span>추가 {formatScore(bonus)}점</span>
+                          <span>배치 {placementCount}개</span>
+                          <span className="method-time">{method.durationMs.toFixed(0)}ms</span>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
-              <p className="method-note">가장 높은 점수의 풀이를 위에 표시하고, 다른 알고리즘 결과도 함께 비교할 수 있습니다.</p>
+              <p className="method-note">
+                모든 솔버는 최대 {SOLVER_TIME_LIMIT_MINUTES}분 안에서 최적 조합을 찾으며, 가장 높은 점수의 결과가 요약에 반영됩니다.
+              </p>
+              {solverFeedback.length > 0 && (
+                <div className="solver-feedback" role="alert">
+                  {solverFeedback.map((note, idx) => (
+                    <p key={idx}>{note}</p>
+                  ))}
+                </div>
+              )}
             </div>
           ) : null}
         </section>

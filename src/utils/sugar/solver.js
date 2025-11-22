@@ -216,6 +216,7 @@ const runBacktracking = (context, timeLimitMs) => {
   const placementsStack = [];
   let bestResult = createEmptyResult();
   const visitedStates = new Map();
+  let timedOut = false;
 
   const futureBonusBound = () => {
     let optimistic = 0;
@@ -249,7 +250,10 @@ const runBacktracking = (context, timeLimitMs) => {
   };
 
   const dfs = (occupiedMask, baseScore, unusedScore) => {
-    if (performance.now() > deadline) return;
+    if (performance.now() > deadline) {
+      timedOut = true;
+      return;
+    }
     const optimisticBonus = futureBonusBound();
     const optimisticTotal = baseScore + unusedScore + optimisticBonus;
     if (optimisticTotal <= bestResult.totalScore) {
@@ -332,7 +336,7 @@ const runBacktracking = (context, timeLimitMs) => {
 
   dfs(blockedMask, 0, unusedBaseScore);
 
-  return { result: bestResult, durationMs: performance.now() - start };
+  return { result: bestResult, durationMs: performance.now() - start, timedOut };
 };
 
 const buildExactCoverMatrix = (context) => {
@@ -424,6 +428,7 @@ const runAlgorithmX = (context, timeLimitMs) => {
 
   const modifierTotals = {};
   let baseScore = 0;
+  let timedOut = false;
 
   const optimisticBonus = () => {
     let optimistic = 0;
@@ -473,7 +478,10 @@ const runAlgorithmX = (context, timeLimitMs) => {
   };
 
   const search = () => {
-    if (performance.now() > deadline) return;
+    if (performance.now() > deadline) {
+      timedOut = true;
+      return;
+    }
     const columnIndex = chooseColumn();
     if (columnIndex === null) {
       const result = evaluateStack(solutionRows.filter((row) => row.modifier), baseScore, modifierTotals);
@@ -507,12 +515,15 @@ const runAlgorithmX = (context, timeLimitMs) => {
         baseScore -= row.baseScore;
       }
       solutionRows.pop();
-      if (performance.now() > deadline) break;
+      if (performance.now() > deadline) {
+        timedOut = true;
+        break;
+      }
     }
   };
 
   search();
-  return { result: bestResult, durationMs: performance.now() - start };
+  return { result: bestResult, durationMs: performance.now() - start, timedOut };
 };
 
 const runCsp = (context, timeLimitMs) => {
@@ -523,6 +534,7 @@ const runCsp = (context, timeLimitMs) => {
   const placementsStack = [];
   const modifierTotals = {};
   let bestResult = createEmptyResult();
+  let timedOut = false;
 
   const placementDomains = new Map();
   piecePool.forEach((entry) => {
@@ -562,7 +574,10 @@ const runCsp = (context, timeLimitMs) => {
   };
 
   const dfs = (occupiedMask, baseScore) => {
-    if (performance.now() > deadline) return;
+    if (performance.now() > deadline) {
+      timedOut = true;
+      return;
+    }
     const freeMask = boardMask & ~occupiedMask;
     if (freeMask === 0n) {
       const evaluated = evaluateStack(placementsStack, baseScore, modifierTotals);
@@ -608,14 +623,17 @@ const runCsp = (context, timeLimitMs) => {
       modifierTotals[entry.modifier] -= entry.area;
       if (modifierTotals[entry.modifier] <= 0) delete modifierTotals[entry.modifier];
       entry.remaining += 1;
-      if (performance.now() > deadline) break;
+      if (performance.now() > deadline) {
+        timedOut = true;
+        break;
+      }
     }
 
     dfs(occupiedMask | bit, baseScore);
   };
 
   dfs(blockedMask, 0);
-  return { result: bestResult, durationMs: performance.now() - start };
+  return { result: bestResult, durationMs: performance.now() - start, timedOut };
 };
 
 export const solveSugarBoard = ({
@@ -624,7 +642,7 @@ export const solveSugarBoard = ({
   blocked = [],
   pieces = [],
   role,
-  timeLimitMs = 55000,
+  timeLimitMs = 180000,
 }) => {
   const context = buildContext({ rows, cols, blocked, pieces, role });
   if (!context) {
