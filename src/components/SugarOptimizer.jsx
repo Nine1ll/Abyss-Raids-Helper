@@ -45,17 +45,27 @@ const createInitialBlockedCells = () => {
 
 const gradeEntries = Object.entries(GRADE_INFO);
 const shapeEntries = SHAPE_OPTIONS;
-
 const ShapePreview = ({ shape, color = "#475569", cellSize = 16 }) => {
   if (!shape) return null;
+
+  // 실제 shape 크기 기준으로 그리드 생성
   const previewStyle = {
+    display: "grid",
     gridTemplateColumns: `repeat(${shape.width}, ${cellSize}px)`,
     gridTemplateRows: `repeat(${shape.height}, ${cellSize}px)`,
+    gap: "2px",
   };
+
+  // 가운데 정렬용 래퍼
   const wrapperStyle = {
-    width: `${cellSize * 5}px`,
-    height: `${cellSize * 5}px`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "6px",
+    borderRadius: "12px",
+    backgroundColor: "rgba(255,255,255,0.05)",
   };
+
   return (
     <div className="shape-preview-wrapper" style={wrapperStyle}>
       <div className="shape-preview" style={previewStyle}>
@@ -498,11 +508,13 @@ const SugarOptimizer = ({ appState, setAppState }) => {
 
   return (
     <div className={`sugar-view ${darkMode ? "dark" : ""}`}>
-      <h1 className="sugar-title">🍪 CTOA: 설탕 유리조각 최적 배치</h1>
-      <p className="sugar-subtitle">
-        아직 사진은 지원하지 않습니다. 알고리즘도 완벽하게 동작하지 않습니다. 죄송합니다. (추후 수정 예정)
-      </p>
-
+        <p className="info-box">
+          현재 입력된 보드와 조각 기준으로,
+          가능한 배치 중 <strong>가장 높은 점수의 배치</strong>를 계산해 보여줍니다.
+          <br />
+          (이미지 인식 및 자동 조각 추출은 아직 지원하지 않습니다.)
+        </p>
+        <h1>🍪 CTOA: 설탕 유리조각 최적 배치</h1>
       <div className="theme-toggle-right">
         <div className="theme-toggle" role="group" aria-label="테마 선택">
           <button
@@ -528,7 +540,6 @@ const SugarOptimizer = ({ appState, setAppState }) => {
           <div className="role-selector">
             <div className="role-selector-header">
               <span>역할군 선택</span>
-              <span>사용 가능한 수식어 목록을 한 번에 확인하세요.</span>
             </div>
             <div className="role-button-row" role="group" aria-label="역할군 선택">
               {Object.entries(ROLE_LABELS).map(([value, label]) => {

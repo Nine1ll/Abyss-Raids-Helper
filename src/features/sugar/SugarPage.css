@@ -1,0 +1,135 @@
+/* 4칸 입력 한 줄 레이아웃 */
+.luck-input-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* 각 입력 카드 - 라이트 기본 */
+.luck-input-card {
+  background: rgba(248, 250, 252, 0.95);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+}
+
+.App.dark .luck-input-card {
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.luck-input-card-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.App.dark .luck-input-card-label {
+  color: #e5e7eb;
+}
+
+.luck-input-card input {
+  width: 100%;
+  text-align: center;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.8);
+  background: #ffffff;
+  color: #111827;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.App.dark .luck-input-card input {
+  background: rgba(15, 23, 42, 0.95);
+  color: #f9fafb;
+}
+
+/* 최대치 도달했을 때(잠긴 느낌) */
+.luck-input-card.locked {
+  opacity: 0.6;
+}
+
+.luck-input-card.locked input {
+  cursor: not-allowed;
+}
+
+/* ====== 설탕 유리조각 모양 버튼 카드 ====== */
+
+.shape-option.add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  /* 홈 상단 버튼 스타일 날리기 */
+  width: auto;
+  height: auto;
+  padding: 10px 8px;
+  box-sizing: border-box;
+
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  background: #ffffff;
+
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.shape-option.add:hover {
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  transform: translateY(-2px);
+}
+
+.App.dark .shape-option.add {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+/* 모양 박스 비율 고정 */
+.shape-preview-wrapper {
+  width: 96px;
+  height: 96px;    /* 필요하면 80~110 사이에서 조절 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shape-preview {
+  display: grid;
+  gap: 2px;
+}
+
+.shape-preview-cell {
+  border-radius: 4px;
+  border: 1px dashed #cbd5f5;
+  width: 100%;
+  height: 100%;
+}
+
+.shape-preview-cell.filled {
+  border: none;
+}
+
+.shape-preview-cell {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+}
+
+.shape-preview-wrapper {
+  width: max-content;
+  height: max-content;
+}
+
+.shape-group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 12px;
+}
+
+

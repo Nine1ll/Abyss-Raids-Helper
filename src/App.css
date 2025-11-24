@@ -1814,3 +1814,247 @@ textarea {
   }
 }
 
+/* =========================
+   오늘의 운빨 (Luck view)
+========================= */
+
+.luck-view {
+  margin-bottom: 40px;
+}
+
+.luck-subtitle {
+  max-width: 720px;
+  margin: 8px auto 24px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.App.dark .luck-subtitle {
+  color: #e5e7eb;
+}
+
+.luck-section {
+  margin-bottom: 16px;
+}
+
+.luck-label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #475569;
+}
+
+.App.dark .luck-label {
+  color: #e2e8f0;
+}
+
+.luck-activity-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.luck-activity-btn {
+  font-size: 13px;
+  padding: 8px 14px;
+}
+
+.luck-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.luck-stat-card {
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.App.dark .luck-stat-card {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.luck-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.App.dark .luck-stat-label {
+  color: #cbd5e1;
+}
+
+.luck-stat-value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.luck-note {
+  margin-top: 6px;
+}
+
+.luck-result-card {
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+}
+
+.App.dark .luck-result-card {
+  background: rgba(30, 64, 175, 0.7);
+  border-color: rgba(191, 219, 254, 0.9);
+}
+
+.luck-result-main {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.luck-highlight {
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.App.dark .luck-highlight {
+  color: #facc15;
+}
+
+.luck-result-sub {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.App.dark .luck-result-sub {
+  color: #e5e7eb;
+}
+/* 레이드 페이즈 카드 */
+.raid-phase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.raid-phase-card {
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.App.dark .raid-phase-card {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.raid-phase-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.raid-reward-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.raid-reward-option {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.raid-reward-option input {
+  margin-top: 2px;
+}
+
+.raid-reward-option.selected {
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.raid-reward-main {
+  font-weight: 600;
+}
+
+.raid-reward-prob {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.App.dark .raid-reward-prob {
+  color: #cbd5e1;
+}
+
+.raid-phase-note {
+  margin-top: 6px;
+}
+
+/* 던전 단계 카드 */
+.dungeon-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dungeon-stage-card {
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.App.dark .dungeon-stage-card {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.dungeon-stage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dungeon-stage-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.dungeon-stage-sub {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.App.dark .dungeon-stage-sub {
+  color: #cbd5e1;
+}
+
+.dungeon-stage-row {
+  margin-bottom: 8px;
+}
+
+.dungeon-stage-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dungeon-count-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.dungeon-count-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}

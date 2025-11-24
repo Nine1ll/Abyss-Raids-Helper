@@ -1,12 +1,12 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { ThemeContext } from "./context/ThemeContext";
-import SiegeSimulator from "./components/SiegeSimulator";
-import SugarOptimizer from "./components/SugarOptimizer";
+import SiegePage from "./features/siege/SiegePage";
+import SugarPage from "./features/sugar/SugarPage";
+import LuckPage from "./features/luck/LuckPage";
 import "./App.css";
 
 const STORAGE_KEY = "sugar-optimizer-state-v1";
 
-// SugarOptimizer용 초기 상태 생성 함수
 const createInitialSugarState = () => {
   const defaultState = {
     blockedCells: null,
@@ -21,93 +21,66 @@ const createInitialSugarState = () => {
     },
   };
 
-  if (typeof window === "undefined") {
-    return defaultState;
-  }
+  if (typeof window === "undefined") return defaultState;
 
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState;
-
     const parsed = JSON.parse(raw);
     return {
       ...defaultState,
       ...parsed,
-      // blockedCells는 Set으로 복원
-      blockedCells: parsed.blockedCells
-        ? new Set(parsed.blockedCells)
-        : null,
+      blockedCells: parsed.blockedCells ? new Set(parsed.blockedCells) : null,
     };
-  } catch (e) {
-    console.error("failed to load sugar optimizer state:", e);
+  } catch {
     return defaultState;
   }
 };
 
 const App = () => {
-  const { darkMode } = useContext(ThemeContext); // setDarkMode는 사용하지 않음
-
-  // 상태를 URL 해시에서 초기화
+  const { darkMode } = useContext(ThemeContext);
   const [activeView, setActiveView] = useState(() => {
+    if (typeof window === "undefined") return "siege";
     const hash = window.location.hash;
-    if (hash === "#sugar") {
-      return "sugar";
-    } else if (hash === "#siege") {
-      return "siege";
-    } else {
-      return "siege"; // 기본값
-    }
+    if (hash === "#sugar") return "sugar";
+    if (hash === "#luck") return "luck";
+    return "siege";
   });
 
-  // activeView가 변경될 때 URL 해시도 업데이트
+  // hash 동기화
   useEffect(() => {
-    window.location.hash = activeView;
+    if (activeView === "sugar") window.location.hash = "#sugar";
+    else if (activeView === "luck") window.location.hash = "#luck";
+    else window.location.hash = "#siege";
   }, [activeView]);
 
-  // URL 해시가 변경될 때 activeView 업데이트 (브라우저 뒤로가기/앞으로가기 대응)
   useEffect(() => {
-    const handleHashChange = () => {
+    const onHash = () => {
       const hash = window.location.hash;
-      if (hash === "#sugar" && activeView !== "sugar") {
-        setActiveView("sugar");
-      } else if (hash === "#siege" && activeView !== "siege") {
-        setActiveView("siege");
-      }
+      if (hash === "#sugar") setActiveView("sugar");
+      else if (hash === "#luck") setActiveView("luck");
+      else setActiveView("siege");
     };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
-    window.addEventListener("hashchange", handleHashChange);
-    // 초기 해시 확인 (예: 링크로 직접 접속한 경우)
-    handleHashChange();
-
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-    };
-  }, [activeView]);
-
-  // 🔥 SugarOptimizer의 상태를 App에서 관리 + sessionStorage 연동
   const [sugarOptimizerState, setSugarOptimizerState] = useState(
     createInitialSugarState
   );
 
-  // sugarOptimizerState 변할 때마다 sessionStorage에 저장
   useEffect(() => {
     try {
       const serializable = {
         ...sugarOptimizerState,
-        // Set은 배열로 바꿔서 저장
         blockedCells: sugarOptimizerState.blockedCells
           ? Array.from(sugarOptimizerState.blockedCells)
           : null,
-        // solution은 새로고침 후 다시 계산하도록 굳이 저장 안 함
         solution: null,
-        // boardImage / piecesImage도 Object URL이라 새로고침 후엔 쓸모없어서 기본은 저장 X
         boardImage: null,
         piecesImage: null,
       };
-      window.sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(serializable)
-      );
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
     } catch (e) {
       console.error("failed to save sugar optimizer state:", e);
     }
@@ -115,7 +88,6 @@ const App = () => {
 
   return (
     <div className={`App ${darkMode ? "dark" : ""}`}>
-      {/* 상단 헤더: 시즈나이트 시뮬레이터 스타일 */}
       <div className="header-banner">
         <div className="header-buttons-center">
           <button
@@ -132,17 +104,24 @@ const App = () => {
           >
             설탕 유리조각 최적 배치
           </button>
+          <button
+            type="button"
+            className={`header-btn ${activeView === "luck" ? "active" : ""}`}
+            onClick={() => setActiveView("luck")}
+          >
+            오늘의 운빨
+          </button>
         </div>
       </div>
 
-      {activeView === "siege" ? (
-        <SiegeSimulator />
-      ) : (
-        <SugarOptimizer
+      {activeView === "siege" && <SiegePage />}
+      {activeView === "sugar" && (
+        <SugarPage
           appState={sugarOptimizerState}
           setAppState={setSugarOptimizerState}
         />
       )}
+      {activeView === "luck" && <LuckPage />}
     </div>
   );
 };
