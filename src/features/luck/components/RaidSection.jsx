@@ -1,6 +1,10 @@
 import React from "react";
 import { useRaidLuck } from "../hooks/useRaidLuck";
-import { ABYSS_RAID_CONFIG, RAID_REWARD_LABELS } from "../../../data/abyssRaidConfig";
+import {
+  ABYSS_RAID_CONFIG,
+  RAID_REWARD_LABELS,
+  RAID_REWARD_COUNTS,
+} from "../../../data/abyssRaidConfig";
 
 const difficultyOptions = [
   { value: "normal", label: "노말" },
@@ -19,6 +23,9 @@ const RaidSection = () => {
     percentile,
     verdict,
   } = useRaidLuck();
+
+  // ✅ 현재 난이도에 해당하는 개수 정보
+  const countsForDifficulty = RAID_REWARD_COUNTS[difficulty];
 
   return (
     <div className="sugar-layout">
@@ -65,22 +72,44 @@ const RaidSection = () => {
                   {idx + 1}페이즈
                 </div>
                 <select
-                  className="state-input"
-                  style={{ height: 36, fontSize: 14 }}
-                  value={
-                    phaseSelections[idx] === null ? "" : String(phaseSelections[idx])
-                  }
-                  onChange={(e) =>
-                    setPhaseSelection(idx, e.target.value === "" ? null : e.target.value)
-                  }
-                >
-                  <option value="">선택 안 함</option>
-                  {RAID_REWARD_LABELS.map((label, i) => (
-                    <option key={i} value={i}>
-                      {label} (확률 {phase[i]}%)
-                    </option>
-                  ))}
-                </select>
+                    className="state-input"
+                    style={{ height: 36, fontSize: 14 }}
+                    value={
+                      phaseSelections[idx] === null
+                        ? ""
+                        : String(phaseSelections[idx])
+                    }
+                    onChange={(e) =>
+                      setPhaseSelection(
+                        idx,
+                        e.target.value === "" ? null : e.target.value
+                      )
+                    }
+                  >
+                    <option value="">선택 안 함</option>
+
+                    {phase.map((prob, i) => {
+                      // 🔥 확률 0%거나 정의 안 된 애들은 드롭다운에서 숨기기
+                      if (!prob || prob <= 0) return null;
+
+                      const baseLabel = RAID_REWARD_LABELS[i];
+                      const count = countsForDifficulty?.[i];
+
+                      // ✅ 표시용 라벨 생성
+                      let label = baseLabel;
+                      if (i >= 2 && typeof count === "number") {
+                        // 조각 구간은 개수 같이 붙여주기
+                        label = `${baseLabel} (${count}개)`;
+                      }
+
+                      return (
+                        <option key={i} value={i}>
+                          {label} (확률 {prob}%)
+                        </option>
+                      );
+                    })}
+                  </select>
+
               </div>
             ))}
           </>
@@ -89,7 +118,7 @@ const RaidSection = () => {
 
       <div className="sugar-card">
         <h3 className="sugar-section-title">이번 주 어비스 레이드 운빨 결과</h3>
-        {!percentile ? (
+        {percentile == null ? ( // ← 0%도 표시되게 null 체크로 바꾸는게 좋음
           <p className="empty-text">
             난이도와 각 페이즈의 보상을 선택하면, 여기에서 결과가 표시됩니다.
           </p>

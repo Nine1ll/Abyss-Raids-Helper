@@ -52,9 +52,9 @@ export function evalRaidLuckPercentile(distribution, score) {
 
   let verdict = "";
   if (topPercent <= 5) verdict = "오늘은 레이드 대박 운빨 🔥";
-  else if (topPercent <= 20) verdict = "꽤 잘 나온 상위권 운빨 😎";
-  else if (topPercent <= 50) verdict = "무난무난한 중간 정도 운입니다 🙂";
-  else verdict = "오늘은 저점… 내일은 복리로 돌아올 예정 🙏";
+  else if (topPercent <= 25) verdict = "꽤 잘 나온 상위권 운빨";
+  else if (topPercent <= 50) verdict = "그냥 평균입니다.";
+  else verdict = "이번주도 저점. 독립시행이니 다음주를 노려봅시다.";
 
   return { percentile: topPercent, verdict };
 }

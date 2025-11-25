@@ -1,4 +1,3 @@
-// src/features/luck/components/DungeonSection.jsx
 import React from "react";
 import { useDungeonLuck } from "../hooks/useDungeonLuck";
 import { ABYSS_DUNGEON_CONFIG } from "../../../data/abyssDungeonConfig";
@@ -118,7 +117,7 @@ const DungeonSection = () => {
           <p className="small-note luck-note" style={{ marginBottom: 12 }}>
             이론 분포는 {config.name}에서 시즈나이트 {config.knightsPerRun}개,
             설탕 유리조각 {config.glassPerRun}개 드랍 기준으로 계산합니다. <br />
-            보너스 스테이지는 2% 확률로 상급 1개 추가라고 가정하며,
+            보너스 스테이지는 2% 확률로 상급 1개 추가라고 가정하며, <br />
             위 입력 칸의 최대치는{" "}
             <strong>
               시즈나이트 {knightsMax ?? 0}개, 설탕 유리조각 {glassMax ?? 0}개

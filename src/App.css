@@ -2058,3 +2058,47 @@ textarea {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* 네이버 운세 작은 카드 */
+.naver-fortune-card {
+  max-width: 720px;
+  margin: 8px auto 24px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.9);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  font-size: 13px;
+}
+
+.naver-fortune-card.dark {
+  background: rgba(15, 23, 42, 0.9);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.naver-fortune-text {
+  color: #4b5563;
+}
+
+.naver-fortune-card.dark .naver-fortune-text {
+  color: #e5e7eb;
+}
+
+.naver-fortune-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  background: #03c75a; /* 네이버 느낌 색 */
+  color: white;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.naver-fortune-btn:hover {
+  filter: brightness(1.05);
+}
