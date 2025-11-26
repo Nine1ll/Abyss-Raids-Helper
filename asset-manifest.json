@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/Abyss-Raids-Helper/static/css/main.560dda61.css",
-    "main.js": "/Abyss-Raids-Helper/static/js/main.9a0081e9.js",
+    "main.js": "/Abyss-Raids-Helper/static/js/main.3ac9a054.js",
     "static/js/991.0fc13800.chunk.js": "/Abyss-Raids-Helper/static/js/991.0fc13800.chunk.js",
     "index.html": "/Abyss-Raids-Helper/index.html",
     "main.560dda61.css.map": "/Abyss-Raids-Helper/static/css/main.560dda61.css.map",
-    "main.9a0081e9.js.map": "/Abyss-Raids-Helper/static/js/main.9a0081e9.js.map",
+    "main.3ac9a054.js.map": "/Abyss-Raids-Helper/static/js/main.3ac9a054.js.map",
     "991.0fc13800.chunk.js.map": "/Abyss-Raids-Helper/static/js/991.0fc13800.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.560dda61.css",
-    "static/js/main.9a0081e9.js"
+    "static/js/main.3ac9a054.js"
   ]
 }
