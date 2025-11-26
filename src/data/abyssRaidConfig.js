@@ -1,11 +1,11 @@
 // 어비스 레이드 확률 + 내부 점수 가중치
 
 // 보상 타입 순서:
-// 0: 최상급 시즈나이트
-// 1: 상급 시즈나이트
-// 2: 시즈나이트 조각 (큰 개수)
-// 3: 시즈나이트 조각 (중간 개수)
-// 4: 시즈나이트 조각 (작은 개수)
+// 0: 최상급 시즈나이트 최상급이 조각 4000개
+// 1: 상급 시즈나이트 상급이 조각 2500개 
+// 2: 시즈나이트 조각 
+// 3: 시즈나이트 조각 
+// 4: 시즈나이트 조각
 
 export const RAID_REWARD_COUNTS = {
   normal:    [1, 1, 100, 50, 30],
@@ -13,7 +13,6 @@ export const RAID_REWARD_COUNTS = {
   hell:      [1, 1, 200, 100, 60],
   challenge: [1, 1, 200, 100, 60],
 };
-
 
 export const RAID_REWARD_LABELS = [
   "최상급 시즈나이트",
@@ -24,7 +23,7 @@ export const RAID_REWARD_LABELS = [
 ];
 
 // 내부 “운빨 점수”용 가중치 (UI에 직접 노출 X)
-export const RAID_SCORE_WEIGHTS = [1000, 400, 120, 60, 40];
+export const RAID_SCORE_WEIGHTS = [4000, 2500, 160, 80, 50];
 
 export const ABYSS_RAID_CONFIG = {
   normal: {
