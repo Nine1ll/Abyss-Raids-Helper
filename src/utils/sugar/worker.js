@@ -209,7 +209,6 @@ const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role }) => {
   const modifierTotals = {};
   const placementsStack = [];
   let bestResult = createEmptyResult();
-  const visitedStates = new Map();
 
   const evaluate = (baseScore) => {
     const { totalBonus, breakdown } = summarizeBonuses(modifierTotals);
@@ -263,13 +262,6 @@ const solveSugarBoard = ({ rows, cols, blocked = [], pieces = [], role }) => {
   const dfs = (occupiedMask, baseScore, unusedScore, uniqueUsed = 0) => {
     const optimisticTotal = baseScore + unusedScore + futureBonusBound();
     if (optimisticTotal <= bestResult.totalScore) return;
-
-    const stateKey = occupiedMask.toString(16) + "|" + uniqueUsed;
-    const seenBest = visitedStates.get(stateKey);
-    if (typeof seenBest !== "undefined" && optimisticTotal <= seenBest) {
-      return;
-    }
-    visitedStates.set(stateKey, optimisticTotal);
 
     evaluate(baseScore);
 
